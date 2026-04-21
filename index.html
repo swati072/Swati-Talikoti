@@ -4,10 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpurGear Pro | Engineering Simulator</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Custom UI Accents */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Range Input Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #60a5fa;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+            transition: transform 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Scrollbar for Validation Log */
+        #outputLog::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #outputLog::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        /* Logic Badges */
+        .weaker-badge {
+            padding: 2px 6px;
+            background: #ef4444;
+            color: white;
+            border-radius: 4px;
+            font-size: 9px;
+            margin-left: 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* Animation for the "Live" indicator */
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-live {
+            animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen overflow-x-hidden">
     <div class="fixed inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 -z-10"></div>
@@ -17,31 +81,34 @@
             SPURGEAR PRO <span class="text-xs font-mono text-slate-500 font-normal ml-2">v4.0 (DATA HANDBOOK)</span>
         </h1>
         <div class="flex gap-4 text-sm font-medium">
-            <span class="text-emerald-400">● Live Simulation</span>
+            <span class="text-emerald-400 flex items-center gap-2">
+                <span class="w-2 h-2 bg-emerald-400 rounded-full animate-live"></span>
+                Live Simulation
+            </span>
             <span class="text-slate-400">Lewis Equation Core</span>
         </div>
     </nav>
 
-    <main class="p-6 grid grid-cols-12 gap-6">
-        <section class="col-span-12 lg:col-span-3 glass p-6 rounded-2xl border border-white/10">
+    <main class="p-6 grid grid-cols-12 gap-6 max-w-[1600px] mx-auto">
+        <section class="col-span-12 lg:col-span-3 glass p-6 rounded-2xl">
             <h2 class="text-lg font-semibold mb-4 border-b border-white/5 pb-2">Parameters</h2>
             
             <div class="space-y-6">
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Power (kW)</label>
                     <input type="range" id="power" min="1" max="100" value="15" class="w-full accent-blue-500">
-                    <div class="flex justify-between text-xs mt-1"><span id="powerVal">15</span><span>kW</span></div>
+                    <div class="flex justify-between text-xs mt-1"><span id="powerVal" class="text-blue-400">15</span><span>kW</span></div>
                 </div>
 
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Pinion Speed (RPM)</label>
                     <input type="range" id="rpm" min="100" max="5000" value="1440" class="w-full accent-blue-500">
-                    <div class="flex justify-between text-xs mt-1"><span id="rpmVal">1440</span><span>RPM</span></div>
+                    <div class="flex justify-between text-xs mt-1"><span id="rpmVal" class="text-blue-400">1440</span><span>RPM</span></div>
                 </div>
 
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Material (Pinion)</label>
-                    <select id="material" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 ring-blue-500">
+                    <select id="material" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 ring-blue-500 text-slate-200">
                         <option value="cast_iron">Cast Iron (Grade 20)</option>
                         <option value="steel_c45">Steel C45 (Heat Treated)</option>
                         <option value="alloy_steel">Alloy Steel (20MnCr5)</option>
@@ -50,16 +117,16 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-slate-400">Teeth (Pinion)</label>
-                        <input type="number" id="z1" value="18" class="w-full bg-slate-900 border border-white/10 rounded p-1 text-sm">
+                        <label class="block text-xs text-slate-400 mb-1">Teeth (Pinion)</label>
+                        <input type="number" id="z1" value="18" class="w-full bg-slate-900 border border-white/10 rounded p-2 text-sm focus:ring-1 ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400">Gear Ratio</label>
-                        <input type="number" id="ratio" value="3" step="0.1" class="w-full bg-slate-900 border border-white/10 rounded p-1 text-sm">
+                        <label class="block text-xs text-slate-400 mb-1">Gear Ratio</label>
+                        <input type="number" id="ratio" value="3" step="0.1" class="w-full bg-slate-900 border border-white/10 rounded p-2 text-sm focus:ring-1 ring-blue-500 outline-none">
                     </div>
                 </div>
 
-                <button id="calculateBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl font-bold shadow-lg shadow-blue-900/20">
+                <button id="calculateBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl font-bold shadow-lg shadow-blue-900/40 active:scale-95">
                     RE-DESIGN SYSTEM
                 </button>
             </div>
@@ -69,39 +136,40 @@
             <div class="glass h-[500px] rounded-2xl relative overflow-hidden group">
                 <div id="canvas-container" class="w-full h-full"></div>
                 <div class="absolute bottom-4 left-4 flex gap-2">
-                    <div class="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] border border-white/10 uppercase tracking-widest">
+                    <div class="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] border border-white/10 uppercase tracking-widest font-medium">
                         Real-time Mesh Generation
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase">Module</p>
-                    <p id="resModule" class="text-2xl font-mono text-blue-400">--</p>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-tight">Calculated Module</p>
+                    <p id="resModule" class="text-2xl font-mono text-blue-400 font-bold">--</p>
                 </div>
                 <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase">Factor of Safety</p>
-                    <p id="resFOS" class="text-2xl font-mono text-emerald-400">--</p>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-tight">Factor of Safety</p>
+                    <p id="resFOS" class="text-2xl font-mono text-emerald-400 font-bold">--</p>
                 </div>
                 <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase">Resonance Status</p>
-                    <p id="resStatus" class="text-2xl font-mono text-slate-300">STABLE</p>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-tight">Resonance Status</p>
+                    <p id="resStatus" class="text-2xl font-mono text-slate-300 font-bold">STABLE</p>
                 </div>
             </div>
         </section>
 
         <section class="col-span-12 lg:col-span-3 space-y-6">
-            <div class="glass p-6 rounded-2xl border border-white/10">
+            <div class="glass p-6 rounded-2xl border border-white/10 h-[320px] flex flex-col">
                 <h2 class="text-sm font-bold mb-4 flex items-center gap-2">
                     <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
                     DESIGN VALIDATION
                 </h2>
-                <div id="outputLog" class="space-y-3 text-xs font-mono text-slate-400 h-[300px] overflow-y-auto">
-                    </div>
+                <div id="outputLog" class="space-y-3 text-xs font-mono text-slate-400 overflow-y-auto flex-grow pr-2">
+                    <div class="opacity-50 italic">Awaiting calculation...</div>
+                </div>
             </div>
 
-            <div class="glass p-4 rounded-2xl border border-white/10">
+            <div class="glass p-4 rounded-2xl border border-white/10 h-[244px]">
                 <canvas id="loadChart"></canvas>
             </div>
         </section>
