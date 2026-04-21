@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spur Gear Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .calculator {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .results {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e9f7ef;
+      border: 1px solid #c3e6cb;
+      border-radius: 6px;
+    }
+    .results h2 {
+      margin-top: 0;
+      color: #2f6f31;
+    }
+    .results p {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Spur Gear Calculator</h1>
+  <div class="calculator">
+    <label for="teeth1">Number of Teeth (Gear 1):</label>
+    <input type="number" id="teeth1" placeholder="e.g. 20">
+
+    <label for="teeth2">Number of Teeth (Gear 2):</label>
+    <input type="number" id="teeth2" placeholder="e.g. 40">
+
+    <label for="module">Module (mm):</label>
+    <input type="number" id="module" placeholder="e.g. 2">
+
+    <button onclick="calculateGear()">Calculate</button>
+
+    <div class="results" id="results" style="display:none;">
+      <h2>Results</h2>
+      <p id="pitch1"></p>
+      <p id="pitch2"></p>
+      <p id="centerDistance"></p>
+      <p id="addendum"></p>
+      <p id="dedendum"></p>
+    </div>
+  </div>
+
+  <script>
+    function calculateGear() {
+      const z1 = parseFloat(document.getElementById('teeth1').value);
+      const z2 = parseFloat(document.getElementById('teeth2').value);
+      const m = parseFloat(document.getElementById('module').value);
+
+      if (isNaN(z1) || isNaN(z2) || isNaN(m)) {
+        alert("Please enter valid numbers!");
+        return;
+      }
+
+      // Spur gear formulas
+      const pitch1 = z1 * m; // Pitch circle diameter of gear 1
+      const pitch2 = z2 * m; // Pitch circle diameter of gear 2
+      const centerDistance = (pitch1 + pitch2) / 2; // Center distance
+      const addendum = m; // Addendum = module
+      const dedendum = 1.25 * m; // Dedendum approx = 1.25 * module
+
+      // Display results
+      document.getElementById('pitch1').innerText = `Pitch Diameter (Gear 1): ${pitch1.toFixed(2)} mm`;
+      document.getElementById('pitch2').innerText = `Pitch Diameter (Gear 2): ${pitch2.toFixed(2)} mm`;
+      document.getElementById('centerDistance').innerText = `Center Distance: ${centerDistance.toFixed(2)} mm`;
+      document.getElementById('addendum').innerText = `Addendum: ${addendum.toFixed(2)} mm`;
+      document.getElementById('dedendum').innerText = `Dedendum: ${dedendum.toFixed(2)} mm`;
+
+      document.getElementById('results').style.display = "block";
+    }
+  </script>
+</body>
+</html>
