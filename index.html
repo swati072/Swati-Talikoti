@@ -1,176 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spur Gear Calculator</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f9;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      color: #333;
-    }
-    .calculator {
-      max-width: 600px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      margin-top: 15px;
-      padding: 10px 15px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .results {
-      margin-top: 20px;
-      padding: 15px;
-      background: #e9f7ef;
-      border: 1px solid #c3e6cb;
-      border-radius: 6px;
-    }
-    .results h2 {
-      margin-top: 0;
-      color: #2f6f31;
-    }
-    canvas {
-      display: block;
-      margin: 20px auto;
-      background: #fff;
-      border: 1px solid #ccc;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpurGear Pro | Engineering Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <h1>Spur Gear Calculator</h1>
-  <div class="calculator">
-    <label for="teeth1">Number of Teeth (Gear 1):</label>
-    <input type="number" id="teeth1" placeholder="e.g. 50">
+<body class="bg-slate-950 text-slate-100 min-h-screen overflow-x-hidden">
+    <div class="fixed inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 -z-10"></div>
 
-    <label for="teeth2">Number of Teeth (Gear 2):</label>
-    <input type="number" id="teeth2" placeholder="e.g. 25">
+    <nav class="border-b border-white/10 backdrop-blur-md sticky top-0 z-50 px-8 py-4 flex justify-between items-center">
+        <h1 class="text-2xl font-bold tracking-tighter bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            SPURGEAR PRO <span class="text-xs font-mono text-slate-500 font-normal ml-2">v4.0 (DATA HANDBOOK)</span>
+        </h1>
+        <div class="flex gap-4 text-sm font-medium">
+            <span class="text-emerald-400">● Live Simulation</span>
+            <span class="text-slate-400">Lewis Equation Core</span>
+        </div>
+    </nav>
 
-    <label for="module">Module (mm):</label>
-    <input type="number" id="module" placeholder="e.g. 2">
+    <main class="p-6 grid grid-cols-12 gap-6">
+        <section class="col-span-12 lg:col-span-3 glass p-6 rounded-2xl border border-white/10">
+            <h2 class="text-lg font-semibold mb-4 border-b border-white/5 pb-2">Parameters</h2>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Power (kW)</label>
+                    <input type="range" id="power" min="1" max="100" value="15" class="w-full accent-blue-500">
+                    <div class="flex justify-between text-xs mt-1"><span id="powerVal">15</span><span>kW</span></div>
+                </div>
 
-    <button onclick="calculateGear()">Calculate</button>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Pinion Speed (RPM)</label>
+                    <input type="range" id="rpm" min="100" max="5000" value="1440" class="w-full accent-blue-500">
+                    <div class="flex justify-between text-xs mt-1"><span id="rpmVal">1440</span><span>RPM</span></div>
+                </div>
 
-    <div class="results" id="results" style="display:none;">
-      <h2>Results</h2>
-      <p id="pitch1"></p>
-      <p id="pitch2"></p>
-      <p id="centerDistance"></p>
-      <p id="addendum"></p>
-      <p id="dedendum"></p>
-    </div>
-  </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Material (Pinion)</label>
+                    <select id="material" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 ring-blue-500">
+                        <option value="cast_iron">Cast Iron (Grade 20)</option>
+                        <option value="steel_c45">Steel C45 (Heat Treated)</option>
+                        <option value="alloy_steel">Alloy Steel (20MnCr5)</option>
+                    </select>
+                </div>
 
-  <canvas id="gearCanvas" width="600" height="300"></canvas>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400">Teeth (Pinion)</label>
+                        <input type="number" id="z1" value="18" class="w-full bg-slate-900 border border-white/10 rounded p-1 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400">Gear Ratio</label>
+                        <input type="number" id="ratio" value="3" step="0.1" class="w-full bg-slate-900 border border-white/10 rounded p-1 text-sm">
+                    </div>
+                </div>
 
-  <script>
-    function calculateGear() {
-      const z1 = parseFloat(document.getElementById('teeth1').value);
-      const z2 = parseFloat(document.getElementById('teeth2').value);
-      const m = parseFloat(document.getElementById('module').value);
+                <button id="calculateBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl font-bold shadow-lg shadow-blue-900/20">
+                    RE-DESIGN SYSTEM
+                </button>
+            </div>
+        </section>
 
-      if (isNaN(z1) || isNaN(z2) || isNaN(m)) {
-        alert("Please enter valid numbers!");
-        return;
-      }
+        <section class="col-span-12 lg:col-span-6 space-y-6">
+            <div class="glass h-[500px] rounded-2xl relative overflow-hidden group">
+                <div id="canvas-container" class="w-full h-full"></div>
+                <div class="absolute bottom-4 left-4 flex gap-2">
+                    <div class="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] border border-white/10 uppercase tracking-widest">
+                        Real-time Mesh Generation
+                    </div>
+                </div>
+            </div>
 
-      // Spur gear formulas
-      const pitch1 = z1 * m; // Pitch circle diameter of gear 1
-      const pitch2 = z2 * m; // Pitch circle diameter of gear 2
-      const centerDistance = (pitch1 + pitch2) / 2; // Center distance
-      const addendum = m; // Addendum = module
-      const dedendum = 1.25 * m; // Dedendum approx = 1.25 * module
+            <div class="grid grid-cols-3 gap-4">
+                <div class="glass p-4 rounded-xl border border-white/5">
+                    <p class="text-[10px] text-slate-500 uppercase">Module</p>
+                    <p id="resModule" class="text-2xl font-mono text-blue-400">--</p>
+                </div>
+                <div class="glass p-4 rounded-xl border border-white/5">
+                    <p class="text-[10px] text-slate-500 uppercase">Factor of Safety</p>
+                    <p id="resFOS" class="text-2xl font-mono text-emerald-400">--</p>
+                </div>
+                <div class="glass p-4 rounded-xl border border-white/5">
+                    <p class="text-[10px] text-slate-500 uppercase">Resonance Status</p>
+                    <p id="resStatus" class="text-2xl font-mono text-slate-300">STABLE</p>
+                </div>
+            </div>
+        </section>
 
-      // Display results
-      document.getElementById('pitch1').innerText = `Pitch Diameter (Gear 1): ${pitch1.toFixed(2)} mm`;
-      document.getElementById('pitch2').innerText = `Pitch Diameter (Gear 2): ${pitch2.toFixed(2)} mm`;
-      document.getElementById('centerDistance').innerText = `Center Distance: ${centerDistance.toFixed(2)} mm`;
-      document.getElementById('addendum').innerText = `Addendum: ${addendum.toFixed(2)} mm`;
-      document.getElementById('dedendum').innerText = `Dedendum: ${dedendum.toFixed(2)} mm`;
+        <section class="col-span-12 lg:col-span-3 space-y-6">
+            <div class="glass p-6 rounded-2xl border border-white/10">
+                <h2 class="text-sm font-bold mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    DESIGN VALIDATION
+                </h2>
+                <div id="outputLog" class="space-y-3 text-xs font-mono text-slate-400 h-[300px] overflow-y-auto">
+                    </div>
+            </div>
 
-      document.getElementById('results').style.display = "block";
+            <div class="glass p-4 rounded-2xl border border-white/10">
+                <canvas id="loadChart"></canvas>
+            </div>
+        </section>
+    </main>
 
-      // Draw gears
-      drawGears(z1, pitch1, z2, pitch2, centerDistance);
-    }
-
-    function drawGears(teeth1, pitch1, teeth2, pitch2, centerDistance) {
-      const canvas = document.getElementById('gearCanvas');
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Scale down diameters for drawing
-      const scale = 3; // pixels per mm
-      const r1 = (pitch1 / 2) / scale;
-      const r2 = (pitch2 / 2) / scale;
-
-      const centerX1 = canvas.width / 2 - centerDistance / (2 * scale);
-      const centerY = canvas.height / 2;
-      const centerX2 = canvas.width / 2 + centerDistance / (2 * scale);
-
-      // Draw gear 1
-      drawGear(ctx, centerX1, centerY, r1, teeth1, "blue");
-
-      // Draw gear 2
-      drawGear(ctx, centerX2, centerY, r2, teeth2, "red");
-    }
-
-    function drawGear(ctx, cx, cy, radius, teeth, color) {
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-      ctx.stroke();
-
-      // Draw teeth as triangular shapes
-      for (let i = 0; i < teeth; i++) {
-        const angle = (2 * Math.PI / teeth) * i;
-        const nextAngle = angle + (2 * Math.PI / teeth) * 0.5;
-
-        const x1 = cx + radius * Math.cos(angle);
-        const y1 = cy + radius * Math.sin(angle);
-        const x2 = cx + (radius + 8) * Math.cos(angle + 0.05);
-        const y2 = cy + (radius + 8) * Math.sin(angle + 0.05);
-        const x3 = cx + radius * Math.cos(nextAngle);
-        const y3 = cy + radius * Math.sin(nextAngle);
-
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-  </script>
+    <script src="main.js"></script>
 </body>
 </html>
