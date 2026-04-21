@@ -37,10 +37,6 @@
             transition: transform 0.2s ease;
         }
 
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
-
         /* Scrollbar for Validation Log */
         #outputLog::-webkit-scrollbar {
             width: 4px;
@@ -51,7 +47,6 @@
             border-radius: 10px;
         }
 
-        /* Logic Badges */
         .weaker-badge {
             padding: 2px 6px;
             background: #ef4444;
@@ -59,17 +54,14 @@
             border-radius: 4px;
             font-size: 9px;
             margin-left: 5px;
-            text-transform: uppercase;
-            font-weight: bold;
         }
 
-        /* Animation for the "Live" indicator */
         @keyframes pulse-soft {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
         .animate-live {
-            animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            animation: pulse-soft 2s infinite;
         }
     </style>
 </head>
@@ -92,7 +84,6 @@
     <main class="p-6 grid grid-cols-12 gap-6 max-w-[1600px] mx-auto">
         <section class="col-span-12 lg:col-span-3 glass p-6 rounded-2xl">
             <h2 class="text-lg font-semibold mb-4 border-b border-white/5 pb-2">Parameters</h2>
-            
             <div class="space-y-6">
                 <div>
                     <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Power (kW)</label>
@@ -144,15 +135,15 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase tracking-tight">Calculated Module</p>
+                    <p class="text-[10px] text-slate-500 uppercase">Module</p>
                     <p id="resModule" class="text-2xl font-mono text-blue-400 font-bold">--</p>
                 </div>
                 <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase tracking-tight">Factor of Safety</p>
+                    <p class="text-[10px] text-slate-500 uppercase">Factor of Safety</p>
                     <p id="resFOS" class="text-2xl font-mono text-emerald-400 font-bold">--</p>
                 </div>
                 <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase tracking-tight">Resonance Status</p>
+                    <p class="text-[10px] text-slate-500 uppercase">Resonance Status</p>
                     <p id="resStatus" class="text-2xl font-mono text-slate-300 font-bold">STABLE</p>
                 </div>
             </div>
@@ -165,16 +156,183 @@
                     DESIGN VALIDATION
                 </h2>
                 <div id="outputLog" class="space-y-3 text-xs font-mono text-slate-400 overflow-y-auto flex-grow pr-2">
-                    <div class="opacity-50 italic">Awaiting calculation...</div>
                 </div>
             </div>
-
             <div class="glass p-4 rounded-2xl border border-white/10 h-[244px]">
                 <canvas id="loadChart"></canvas>
             </div>
         </section>
     </main>
 
-    <script src="main.js"></script>
+    <script>
+        /**
+         * SPUR GEAR DESIGN SYSTEM - PRODUCTION CORE
+         * Based on Mahadevan & Reddy Data Handbook
+         */
+
+        const MATERIALS = {
+            cast_iron: { sigma0: 60, bhn: 200, E: 1.1e5 },
+            steel_c45: { sigma0: 140, bhn: 250, E: 2.1e5 },
+            alloy_steel: { sigma0: 250, bhn: 400, E: 2.1e5 }
+        };
+
+        class GearEngine {
+            constructor() {
+                this.initThreeJS();
+                this.initChart();
+                this.bindEvents();
+                this.calculate();
+            }
+
+            bindEvents() {
+                ['power', 'rpm', 'z1', 'ratio'].forEach(id => {
+                    document.getElementById(id).addEventListener('input', (e) => {
+                        const display = document.getElementById(`${id}Val`);
+                        if (display) display.innerText = e.target.value;
+                        this.calculate();
+                    });
+                });
+                document.getElementById('material').addEventListener('change', () => this.calculate());
+                document.getElementById('calculateBtn').addEventListener('click', () => this.calculate());
+            }
+
+            initThreeJS() {
+                const container = document.getElementById('canvas-container');
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(45, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(container.offsetWidth, container.offsetHeight);
+                container.appendChild(this.renderer.domElement);
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0x60a5fa, 1.2);
+                pointLight.position.set(10, 10, 10);
+                this.scene.add(pointLight);
+
+                this.camera.position.z = 25;
+                this.gears = new THREE.Group();
+                this.scene.add(this.gears);
+
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    this.gears.children.forEach((g, i) => {
+                        const ratio = parseFloat(document.getElementById('ratio').value) || 1;
+                        g.rotation.z += (i === 0 ? 0.01 : -0.01 / ratio);
+                    });
+                    this.renderer.render(this.scene, this.camera);
+                };
+                animate();
+            }
+
+            initChart() {
+                const ctx = document.getElementById('loadChart').getContext('2d');
+                this.chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Tangential', 'Dynamic', 'Wear', 'Static'],
+                        datasets: [{
+                            label: 'Loads (N)',
+                            data: [0, 0, 0, 0],
+                            backgroundColor: ['#60a5fa', '#f59e0b', '#10b981', '#ef4444'],
+                            borderRadius: 5
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                            x: { ticks: { color: '#94a3b8' } }
+                        }
+                    }
+                });
+            }
+
+            log(msg, color = 'slate-400') {
+                const logBox = document.getElementById('outputLog');
+                const entry = document.createElement('div');
+                entry.className = `text-${color} border-l-2 border-current pl-2 py-1 bg-white/5 mb-1`;
+                entry.innerHTML = `> ${msg}`;
+                logBox.prepend(entry);
+            }
+
+            calculate() {
+                document.getElementById('outputLog').innerHTML = '';
+                const P = parseFloat(document.getElementById('power').value) * 1000;
+                const N1 = parseFloat(document.getElementById('rpm').value);
+                const Z1 = parseInt(document.getElementById('z1').value) || 18;
+                const i = parseFloat(document.getElementById('ratio').value) || 1;
+                const Z2 = Math.round(Z1 * i);
+                const mat = MATERIALS[document.getElementById('material').value];
+
+                // 1. Weaker Member Selection (Lewis Form Factor)
+                const Y1 = 0.154 - (0.912 / Z1); 
+                const Y2 = 0.154 - (0.912 / Z2);
+                const strength1 = mat.sigma0 * Y1;
+                const strength2 = mat.sigma0 * Y2;
+                const isPinionWeaker = strength1 <= strength2;
+                
+                this.log(`Pinion σY: ${strength1.toFixed(2)} | Gear σY: ${strength2.toFixed(2)}`);
+                this.log(isPinionWeaker ? "DESIGNING FOR PINION (Weaker)" : "DESIGNING FOR GEAR (Weaker)", "blue-400");
+
+                // 2. Initial Module Estimation 
+                const torque = (9.55e6 * (P / 1000)) / N1;
+                let m = Math.ceil(Math.pow((torque * 2) / (mat.sigma0 * 10 * Math.PI * Y1 * Z1), 1/3));
+                if (m < 2) m = 2; 
+
+                // 3. Gear Dimensions
+                const d1 = m * Z1;
+                const d2 = m * Z2;
+                const b = 10 * m; 
+                const v = (Math.PI * d1 * N1) / 60000;
+                const Cv = 3 / (3 + v); 
+
+                // 4. Load Calculations 
+                const Wt = P / v; 
+                const Ws = mat.sigma0 * b * Math.PI * m * Y1 * Cv; 
+                const Wd = Wt + (21 * v * (b * 0.05 + Wt)) / (21 * v + Math.sqrt(b * 0.05 + Wt)); 
+                const Q = (2 * i) / (i + 1);
+                const K = (mat.bhn * mat.bhn * 1.4) / 1e6; 
+                const Ww = d1 * b * Q * K; 
+
+                // UI Updates
+                document.getElementById('resModule').innerText = `${m} mm`;
+                document.getElementById('resFOS').innerText = (Ws / Wt).toFixed(2);
+                
+                this.update3D(d1, d2);
+                this.chart.data.datasets[0].data = [Wt, Wd, Ww, Ws];
+                this.chart.update();
+
+                this.log(`W_tangential: ${Wt.toFixed(0)}N`);
+                this.log(`W_dynamic: ${Wd.toFixed(0)}N`, "amber-400");
+                this.log(`W_wear: ${Ww.toFixed(0)}N`, "emerald-400");
+                
+                if (Ww < Wd) this.log("WARNING: Wear strength insufficient. Increase Hardness!", "red-500");
+                else this.log("Design Safe for Wear & Dynamic Loading", "emerald-500");
+            }
+
+            update3D(d1, d2) {
+                this.gears.clear();
+                const mat = new THREE.MeshPhongMaterial({ color: 0x334155, shininess: 80, flatShading: true, wireframe: true });
+                
+                const pinionGeo = new THREE.CylinderGeometry(d1/12, d1/12, 2, 32);
+                const gearGeo = new THREE.CylinderGeometry(d2/12, d2/12, 2, 32);
+                
+                const pMesh = new THREE.Mesh(pinionGeo, mat);
+                const gMesh = new THREE.Mesh(gearGeo, mat);
+                
+                pMesh.rotation.x = Math.PI/2;
+                gMesh.rotation.x = Math.PI/2;
+                gMesh.position.x = (d1 + d2) / 24;
+
+                this.gears.add(pMesh, gMesh);
+                this.gears.position.x = -(d1 + d2) / 48;
+            }
+        }
+
+        window.onload = () => new GearEngine();
+    </script>
 </body>
 </html>
