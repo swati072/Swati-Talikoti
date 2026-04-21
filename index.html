@@ -58,8 +58,11 @@
       margin-top: 0;
       color: #2f6f31;
     }
-    .results p {
-      margin: 5px 0;
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background: #fff;
+      border: 1px solid #ccc;
     }
   </style>
 </head>
@@ -87,6 +90,8 @@
     </div>
   </div>
 
+  <canvas id="gearCanvas" width="600" height="300"></canvas>
+
   <script>
     function calculateGear() {
       const z1 = parseFloat(document.getElementById('teeth1').value);
@@ -113,6 +118,50 @@
       document.getElementById('dedendum').innerText = `Dedendum: ${dedendum.toFixed(2)} mm`;
 
       document.getElementById('results').style.display = "block";
+
+      // Draw gears
+      drawGears(z1, pitch1, z2, pitch2, centerDistance);
+    }
+
+    function drawGears(teeth1, pitch1, teeth2, pitch2, centerDistance) {
+      const canvas = document.getElementById('gearCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Scale down diameters for drawing
+      const scale = 2; // pixels per mm
+      const r1 = (pitch1 / 2) / scale;
+      const r2 = (pitch2 / 2) / scale;
+
+      const centerX1 = canvas.width / 2 - centerDistance / (2 * scale);
+      const centerY = canvas.height / 2;
+      const centerX2 = canvas.width / 2 + centerDistance / (2 * scale);
+
+      // Draw gear 1
+      drawGear(ctx, centerX1, centerY, r1, teeth1, "blue");
+
+      // Draw gear 2
+      drawGear(ctx, centerX2, centerY, r2, teeth2, "red");
+    }
+
+    function drawGear(ctx, cx, cy, radius, teeth, color) {
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // Draw teeth as small lines around the circle
+      for (let i = 0; i < teeth; i++) {
+        const angle = (2 * Math.PI / teeth) * i;
+        const x1 = cx + radius * Math.cos(angle);
+        const y1 = cy + radius * Math.sin(angle);
+        const x2 = cx + (radius + 5) * Math.cos(angle);
+        const y2 = cy + (radius + 5) * Math.sin(angle);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
     }
   </script>
 </body>
