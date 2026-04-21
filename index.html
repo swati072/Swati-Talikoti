@@ -70,10 +70,10 @@
   <h1>Spur Gear Calculator</h1>
   <div class="calculator">
     <label for="teeth1">Number of Teeth (Gear 1):</label>
-    <input type="number" id="teeth1" placeholder="e.g. 20">
+    <input type="number" id="teeth1" placeholder="e.g. 50">
 
     <label for="teeth2">Number of Teeth (Gear 2):</label>
-    <input type="number" id="teeth2" placeholder="e.g. 40">
+    <input type="number" id="teeth2" placeholder="e.g. 25">
 
     <label for="module">Module (mm):</label>
     <input type="number" id="module" placeholder="e.g. 2">
@@ -129,7 +129,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Scale down diameters for drawing
-      const scale = 2; // pixels per mm
+      const scale = 3; // pixels per mm
       const r1 = (pitch1 / 2) / scale;
       const r2 = (pitch2 / 2) / scale;
 
@@ -146,21 +146,29 @@
 
     function drawGear(ctx, cx, cy, radius, teeth, color) {
       ctx.strokeStyle = color;
+      ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.stroke();
 
-      // Draw teeth as small lines around the circle
+      // Draw teeth as triangular shapes
       for (let i = 0; i < teeth; i++) {
         const angle = (2 * Math.PI / teeth) * i;
+        const nextAngle = angle + (2 * Math.PI / teeth) * 0.5;
+
         const x1 = cx + radius * Math.cos(angle);
         const y1 = cy + radius * Math.sin(angle);
-        const x2 = cx + (radius + 5) * Math.cos(angle);
-        const y2 = cy + (radius + 5) * Math.sin(angle);
+        const x2 = cx + (radius + 8) * Math.cos(angle + 0.05);
+        const y2 = cy + (radius + 8) * Math.sin(angle + 0.05);
+        const x3 = cx + radius * Math.cos(nextAngle);
+        const y3 = cy + radius * Math.sin(nextAngle);
+
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
-        ctx.stroke();
+        ctx.lineTo(x3, y3);
+        ctx.closePath();
+        ctx.fill();
       }
     }
   </script>
