@@ -1,199 +1,329 @@
+# Save this file as: gear_app.py
+
 import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 
-st.set_page_config(page_title="GearAnalyzer Pro", layout="wide")
+# ================= PAGE =================
+st.set_page_config(
+    page_title="GearAnalyzer Pro",
+    layout="wide"
+)
 
-# ================= TITLE =================
-st.title("⚙️ GearAnalyzer Pro – Ultimate Dashboard")
+st.title("⚙️ GearAnalyzer Pro")
 
-# ================= THEME =================
-theme = st.sidebar.radio("Theme", ["Light", "Dark"])
-if theme == "Dark":
-    st.markdown(
-        "<style>body {background-color:#0E1117; color:white;}</style>",
-        unsafe_allow_html=True
-    )
+# ================= INPUTS =================
+st.sidebar.header("Input Parameters")
 
-# ================= INPUT =================
-gear_type = st.selectbox("Gear Type", ["Spur Gear", "Helical Gear"])
+gear_type = st.sidebar.selectbox(
+    "Gear Type",
+    ["Spur Gear", "Helical Gear"]
+)
 
-col1, col2 = st.columns(2)
+material = st.sidebar.selectbox(
+    "Material",
+    ["Steel", "Aluminum", "Cast Iron"]
+)
 
-with col1:
-    P = st.number_input("Power (kW)", value=5.0)
-    N1 = st.number_input("Speed (RPM)", value=1000.0)
-    i = st.number_input("Gear Ratio", value=2.0)
+P = st.sidebar.number_input(
+    "Power (kW)",
+    min_value=0.1,
+    value=5.0
+)
 
-with col2:
-    m = st.number_input("Module (mm)", value=5.0)
-    Z1 = st.number_input("Teeth (Pinion)", value=10, min_value=5)
-    phi = st.number_input("Pressure Angle (deg)", value=20.0)
+N1 = st.sidebar.number_input(
+    "Input Speed (RPM)",
+    min_value=1.0,
+    value=1000.0
+)
 
-material = st.selectbox("Material", ["Steel", "Aluminum", "Cast Iron"])
+gear_ratio = st.sidebar.number_input(
+    "Gear Ratio",
+    min_value=1.0,
+    value=2.0
+)
 
-if N1 == 0 or m == 0:
-    st.error("Speed and Module must be non-zero")
-    st.stop()
+module = st.sidebar.number_input(
+    "Module (mm)",
+    min_value=1.0,
+    value=5.0
+)
 
-phi_rad = np.radians(phi)
+Z1 = st.sidebar.number_input(
+    "Pinion Teeth",
+    min_value=5,
+    value=10
+)
 
-# ================= CALCULATIONS =================
-N2 = N1 / i
-Z2 = int(Z1 * i)
+pressure_angle = st.sidebar.number_input(
+    "Pressure Angle (deg)",
+    min_value=10.0,
+    value=20.0
+)
 
-d1 = m * Z1
-d2 = m * Z2
-
-T = (9550 * P) / N1
-Ft = (2 * T * 1000) / d1
-Fr = Ft * np.tan(phi_rad)
-
-# Lewis factor
-Y = 0.154 - (0.912 / Z1)
-b = 10 * m
-
-stress = Ft / (b * m * Y)
-
-# ================= MATERIAL =================
+# ================= MATERIAL DATA =================
 material_strength = {
     "Steel": 250e6,
     "Aluminum": 150e6,
     "Cast Iron": 100e6
 }
 
-sigma_allow = material_strength[material]
-FOS = sigma_allow / stress
+# ================= CALCULATIONS =================
 
-# ================= AGMA =================
-Kv, Ks, Km = 1.25, 1.0, 1.1
+phi = np.radians(pressure_angle)
+
+Z2 = int(Z1 * gear_ratio)
+
+N2 = N1 / gear_ratio
+
+d1 = module * Z1
+d2 = module * Z2
+
+T = (9550 * P) / N1
+
+Ft = (2 * T * 1000) / d1
+
+Fr = Ft * np.tan(phi)
+
+# Lewis Form Factor
+Y = max(0.1, 0.154 - (0.912 / Z1))
+
+b = 10 * module
+
+stress = Ft / (b * module * Y)
+
+# AGMA Approximation
+Kv = 1.25
+Ks = 1.0
+Km = 1.1
+
 agma_stress = stress * Kv * Ks * Km
 
-# ================= OUTPUT =================
-st.subheader("📊 Results")
+# Factor of Safety
+sigma_allow = material_strength[material]
 
-st.write(f"Output Speed: {N2:.2f} RPM")
-st.write(f"Gear Teeth: {Z2}")
-st.write(f"Pitch Diameter Pinion: {d1:.2f} mm")
-st.write(f"Pitch Diameter Gear: {d2:.2f} mm")
-st.write(f"Torque: {T:.2f} Nm")
-st.write(f"Tangential Force: {Ft:.2f} N")
-st.write(f"Radial Force: {Fr:.2f} N")
-st.write(f"Bending Stress: {stress:.2f} Pa")
-st.write(f"AGMA Stress: {agma_stress:.2f} Pa")
-st.write(f"Factor of Safety: {FOS:.2f}")
+FOS = sigma_allow / agma_stress
 
-# ================= AI SUGGESTION =================
-st.subheader("🤖 AI Suggestion")
+# ================= RESULTS =================
+
+st.header("📊 Results")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Output Speed", f"{N2:.2f} RPM")
+    st.metric("Torque", f"{T:.2f} Nm")
+    st.metric("Tangential Force", f"{Ft:.2f} N")
+    st.metric("Radial Force", f"{Fr:.2f} N")
+
+with col2:
+    st.metric("AGMA Stress", f"{agma_stress:.2f} Pa")
+    st.metric("Factor of Safety", f"{FOS:.2f}")
+    st.metric("Gear Teeth", f"{Z2}")
+    st.metric("Pitch Diameter", f"{d2:.2f} mm")
+
+# ================= SAFETY =================
+
+st.header("🛡 Safety Analysis")
 
 if FOS < 1.5:
-    st.warning("Increase module or reduce load")
-elif FOS > 3:
-    st.info("Design is over-safe. Reduce material")
+    st.error("Unsafe Design")
+elif FOS < 3:
+    st.warning("Moderate Safety")
 else:
-    st.success("Optimal design")
+    st.success("Safe Design")
+
+# ================= AI SUGGESTION =================
+
+st.header("🤖 AI Suggestion")
+
+if FOS < 1.5:
+    st.write("Increase module or reduce power load.")
+elif FOS > 4:
+    st.write("Design is over-safe. Material can be optimized.")
+else:
+    st.write("Design is optimized.")
 
 # ================= GRAPH =================
-st.subheader("📈 Stress vs Module")
+
+st.header("📈 Stress vs Module")
 
 modules = np.linspace(2, 10, 20)
+
 stress_values = []
 
-for mod in modules:
-    d_temp = mod * Z1
+for m in modules:
+
+    d_temp = m * Z1
+
     Ft_temp = (2 * T * 1000) / d_temp
-    stress_temp = Ft_temp / (10 * mod * mod * Y)
+
+    stress_temp = Ft_temp / (10 * m * m * Y)
+
     stress_values.append(stress_temp)
 
 fig, ax = plt.subplots()
+
 ax.plot(modules, stress_values)
+
 ax.set_xlabel("Module")
+
 ax.set_ylabel("Stress")
+
+ax.set_title("Stress Variation")
+
 st.pyplot(fig)
 
-# ================= TABLE =================
-data = pd.DataFrame({
+# ================= DATA TABLE =================
+
+st.header("📋 Data Table")
+
+df = pd.DataFrame({
     "Module": modules,
     "Stress": stress_values
 })
 
-st.dataframe(data)
+st.dataframe(df)
 
 # ================= CSV DOWNLOAD =================
-csv = data.to_csv(index=False).encode('utf-8')
-st.download_button("Download CSV", csv, "gear_data.csv")
 
-# ================= GEAR DRAW =================
-st.subheader("⚙️ Gear Model")
+csv = df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    "Download CSV",
+    csv,
+    "gear_results.csv",
+    "text/csv"
+)
+
+# ================= GEAR DRAWING =================
+
+st.header("⚙️ Gear Visualization")
 
 theta = np.linspace(0, 2*np.pi, Z1 * 2)
+
 r_base = d1 / 2
+
 r_tooth = r_base * 1.2
 
 x = []
 y = []
 
-for idx, t in enumerate(theta):
-    r = r_base if idx % 2 == 0 else r_tooth
+for i, t in enumerate(theta):
+
+    r = r_base if i % 2 == 0 else r_tooth
+
     x.append(r * np.cos(t))
+
     y.append(r * np.sin(t))
 
 fig2, ax2 = plt.subplots()
+
 ax2.plot(x, y)
-ax2.set_aspect('equal')
+
+ax2.set_aspect("equal")
+
+ax2.set_title(f"{Z1} Teeth Gear")
+
 st.pyplot(fig2)
 
 # ================= ROTATION =================
-st.subheader("🔄 Rotation")
 
-angle = st.slider("Rotate", 0, 360, 0)
+st.header("🔄 Gear Rotation")
 
-x_rot = []
-y_rot = []
+angle = st.slider(
+    "Rotation Angle",
+    0,
+    360,
+    0
+)
 
-for idx, t in enumerate(theta):
-    r = r_base if idx % 2 == 0 else r_tooth
-    x_rot.append(r * np.cos(t + np.radians(angle)))
-    y_rot.append(r * np.sin(t + np.radians(angle)))
+xr = []
+yr = []
+
+for i, t in enumerate(theta):
+
+    r = r_base if i % 2 == 0 else r_tooth
+
+    xr.append(
+        r * np.cos(t + np.radians(angle))
+    )
+
+    yr.append(
+        r * np.sin(t + np.radians(angle))
+    )
 
 fig3, ax3 = plt.subplots()
-ax3.plot(x_rot, y_rot)
-ax3.set_aspect('equal')
+
+ax3.plot(xr, yr)
+
+ax3.set_aspect("equal")
+
 st.pyplot(fig3)
 
-# ================= AUTO ANIMATION =================
-if st.button("Start Animation"):
-    for ang in range(0, 360, 15):
-        fig_anim, ax_anim = plt.subplots()
-        xr, yr = [], []
-        for idx, t in enumerate(theta):
-            r = r_base if idx % 2 == 0 else r_tooth
-            xr.append(r * np.cos(t + np.radians(ang)))
-            yr.append(r * np.sin(t + np.radians(ang)))
-        ax_anim.plot(xr, yr)
-        ax_anim.set_aspect('equal')
-        st.pyplot(fig_anim)
-        time.sleep(0.1)
+# ================= PDF REPORT =================
 
-# ================= PDF =================
-def create_pdf():
-    doc = SimpleDocTemplate("gear_report.pdf")
+def generate_pdf():
+
+    doc = SimpleDocTemplate(
+        "gear_report.pdf"
+    )
+
     styles = getSampleStyleSheet()
+
     content = []
 
-    content.append(Paragraph("Gear Analysis Report", styles["Title"]))
-    content.append(Paragraph(f"Teeth: {Z1}", styles["Normal"]))
-    content.append(Paragraph(f"Stress: {stress:.2f}", styles["Normal"]))
-    content.append(Paragraph(f"AGMA Stress: {agma_stress:.2f}", styles["Normal"]))
-    content.append(Paragraph(f"FOS: {FOS:.2f}", styles["Normal"]))
+    content.append(
+        Paragraph(
+            "Gear Analysis Report",
+            styles["Title"]
+        )
+    )
+
+    content.append(
+        Paragraph(
+            f"Gear Type: {gear_type}",
+            styles["Normal"]
+        )
+    )
+
+    content.append(
+        Paragraph(
+            f"Material: {material}",
+            styles["Normal"]
+        )
+    )
+
+    content.append(
+        Paragraph(
+            f"AGMA Stress: {agma_stress:.2f} Pa",
+            styles["Normal"]
+        )
+    )
+
+    content.append(
+        Paragraph(
+            f"Factor of Safety: {FOS:.2f}",
+            styles["Normal"]
+        )
+    )
 
     doc.build(content)
 
-if st.button("Generate PDF"):
-    create_pdf()
-    with open("gear_report.pdf", "rb") as f:
-        st.download_button("Download PDF", f, "gear_report.pdf")
+if st.button("Generate PDF Report"):
+
+    generate_pdf()
+
+    with open(
+        "gear_report.pdf",
+        "rb"
+    ) as file:
+
+        st.download_button(
+            "Download PDF",
+            file,
+            "gear_report.pdf"
+        )
