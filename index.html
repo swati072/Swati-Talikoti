@@ -1,338 +1,199 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpurGear Pro | Engineering Simulator</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+import streamlit as st
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import time
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
-    <style>
-        /* Custom UI Accents */
-        .glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
+st.set_page_config(page_title="GearAnalyzer Pro", layout="wide")
 
-        /* Custom Range Input Styling */
-        input[type="range"] {
-            -webkit-appearance: none;
-            background: rgba(255, 255, 255, 0.1);
-            height: 4px;
-            border-radius: 2px;
-        }
+# ================= TITLE =================
+st.title("⚙️ GearAnalyzer Pro – Ultimate Dashboard")
 
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #60a5fa;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
-            transition: transform 0.2s ease;
-        }
+# ================= THEME =================
+theme = st.sidebar.radio("Theme", ["Light", "Dark"])
+if theme == "Dark":
+    st.markdown(
+        "<style>body {background-color:#0E1117; color:white;}</style>",
+        unsafe_allow_html=True
+    )
 
-        /* Scrollbar for Validation Log */
-        #outputLog::-webkit-scrollbar {
-            width: 4px;
-        }
+# ================= INPUT =================
+gear_type = st.selectbox("Gear Type", ["Spur Gear", "Helical Gear"])
 
-        #outputLog::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
+col1, col2 = st.columns(2)
 
-        .weaker-badge {
-            padding: 2px 6px;
-            background: #ef4444;
-            color: white;
-            border-radius: 4px;
-            font-size: 9px;
-            margin-left: 5px;
-        }
+with col1:
+    P = st.number_input("Power (kW)", value=5.0)
+    N1 = st.number_input("Speed (RPM)", value=1000.0)
+    i = st.number_input("Gear Ratio", value=2.0)
 
-        @keyframes pulse-soft {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .animate-live {
-            animation: pulse-soft 2s infinite;
-        }
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen overflow-x-hidden">
-    <div class="fixed inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 -z-10"></div>
+with col2:
+    m = st.number_input("Module (mm)", value=5.0)
+    Z1 = st.number_input("Teeth (Pinion)", value=10, min_value=5)
+    phi = st.number_input("Pressure Angle (deg)", value=20.0)
 
-    <nav class="border-b border-white/10 backdrop-blur-md sticky top-0 z-50 px-8 py-4 flex justify-between items-center">
-        <h1 class="text-2xl font-bold tracking-tighter bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            SPURGEAR PRO <span class="text-xs font-mono text-slate-500 font-normal ml-2">v4.0 (DATA HANDBOOK)</span>
-        </h1>
-        <div class="flex gap-4 text-sm font-medium">
-            <span class="text-emerald-400 flex items-center gap-2">
-                <span class="w-2 h-2 bg-emerald-400 rounded-full animate-live"></span>
-                Live Simulation
-            </span>
-            <span class="text-slate-400">Lewis Equation Core</span>
-        </div>
-    </nav>
+material = st.selectbox("Material", ["Steel", "Aluminum", "Cast Iron"])
 
-    <main class="p-6 grid grid-cols-12 gap-6 max-w-[1600px] mx-auto">
-        <section class="col-span-12 lg:col-span-3 glass p-6 rounded-2xl">
-            <h2 class="text-lg font-semibold mb-4 border-b border-white/5 pb-2">Parameters</h2>
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Power (kW)</label>
-                    <input type="range" id="power" min="1" max="100" value="15" class="w-full accent-blue-500">
-                    <div class="flex justify-between text-xs mt-1"><span id="powerVal" class="text-blue-400">15</span><span>kW</span></div>
-                </div>
+if N1 == 0 or m == 0:
+    st.error("Speed and Module must be non-zero")
+    st.stop()
 
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Pinion Speed (RPM)</label>
-                    <input type="range" id="rpm" min="100" max="5000" value="1440" class="w-full accent-blue-500">
-                    <div class="flex justify-between text-xs mt-1"><span id="rpmVal" class="text-blue-400">1440</span><span>RPM</span></div>
-                </div>
+phi_rad = np.radians(phi)
 
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2">Material (Pinion)</label>
-                    <select id="material" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 ring-blue-500 text-slate-200">
-                        <option value="cast_iron">Cast Iron (Grade 20)</option>
-                        <option value="steel_c45">Steel C45 (Heat Treated)</option>
-                        <option value="alloy_steel">Alloy Steel (20MnCr5)</option>
-                    </select>
-                </div>
+# ================= CALCULATIONS =================
+N2 = N1 / i
+Z2 = int(Z1 * i)
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Teeth (Pinion)</label>
-                        <input type="number" id="z1" value="18" class="w-full bg-slate-900 border border-white/10 rounded p-2 text-sm focus:ring-1 ring-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Gear Ratio</label>
-                        <input type="number" id="ratio" value="3" step="0.1" class="w-full bg-slate-900 border border-white/10 rounded p-2 text-sm focus:ring-1 ring-blue-500 outline-none">
-                    </div>
-                </div>
+d1 = m * Z1
+d2 = m * Z2
 
-                <button id="calculateBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl font-bold shadow-lg shadow-blue-900/40 active:scale-95">
-                    RE-DESIGN SYSTEM
-                </button>
-            </div>
-        </section>
+T = (9550 * P) / N1
+Ft = (2 * T * 1000) / d1
+Fr = Ft * np.tan(phi_rad)
 
-        <section class="col-span-12 lg:col-span-6 space-y-6">
-            <div class="glass h-[500px] rounded-2xl relative overflow-hidden group">
-                <div id="canvas-container" class="w-full h-full"></div>
-                <div class="absolute bottom-4 left-4 flex gap-2">
-                    <div class="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] border border-white/10 uppercase tracking-widest font-medium">
-                        Real-time Mesh Generation
-                    </div>
-                </div>
-            </div>
+# Lewis factor
+Y = 0.154 - (0.912 / Z1)
+b = 10 * m
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase">Module</p>
-                    <p id="resModule" class="text-2xl font-mono text-blue-400 font-bold">--</p>
-                </div>
-                <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase">Factor of Safety</p>
-                    <p id="resFOS" class="text-2xl font-mono text-emerald-400 font-bold">--</p>
-                </div>
-                <div class="glass p-4 rounded-xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 uppercase">Resonance Status</p>
-                    <p id="resStatus" class="text-2xl font-mono text-slate-300 font-bold">STABLE</p>
-                </div>
-            </div>
-        </section>
+stress = Ft / (b * m * Y)
 
-        <section class="col-span-12 lg:col-span-3 space-y-6">
-            <div class="glass p-6 rounded-2xl border border-white/10 h-[320px] flex flex-col">
-                <h2 class="text-sm font-bold mb-4 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                    DESIGN VALIDATION
-                </h2>
-                <div id="outputLog" class="space-y-3 text-xs font-mono text-slate-400 overflow-y-auto flex-grow pr-2">
-                </div>
-            </div>
-            <div class="glass p-4 rounded-2xl border border-white/10 h-[244px]">
-                <canvas id="loadChart"></canvas>
-            </div>
-        </section>
-    </main>
+# ================= MATERIAL =================
+material_strength = {
+    "Steel": 250e6,
+    "Aluminum": 150e6,
+    "Cast Iron": 100e6
+}
 
-    <script>
-        /**
-         * SPUR GEAR DESIGN SYSTEM - PRODUCTION CORE
-         * Based on Mahadevan & Reddy Data Handbook
-         */
+sigma_allow = material_strength[material]
+FOS = sigma_allow / stress
 
-        const MATERIALS = {
-            cast_iron: { sigma0: 60, bhn: 200, E: 1.1e5 },
-            steel_c45: { sigma0: 140, bhn: 250, E: 2.1e5 },
-            alloy_steel: { sigma0: 250, bhn: 400, E: 2.1e5 }
-        };
+# ================= AGMA =================
+Kv, Ks, Km = 1.25, 1.0, 1.1
+agma_stress = stress * Kv * Ks * Km
 
-        class GearEngine {
-            constructor() {
-                this.initThreeJS();
-                this.initChart();
-                this.bindEvents();
-                this.calculate();
-            }
+# ================= OUTPUT =================
+st.subheader("📊 Results")
 
-            bindEvents() {
-                ['power', 'rpm', 'z1', 'ratio'].forEach(id => {
-                    document.getElementById(id).addEventListener('input', (e) => {
-                        const display = document.getElementById(`${id}Val`);
-                        if (display) display.innerText = e.target.value;
-                        this.calculate();
-                    });
-                });
-                document.getElementById('material').addEventListener('change', () => this.calculate());
-                document.getElementById('calculateBtn').addEventListener('click', () => this.calculate());
-            }
+st.write(f"Output Speed: {N2:.2f} RPM")
+st.write(f"Gear Teeth: {Z2}")
+st.write(f"Pitch Diameter Pinion: {d1:.2f} mm")
+st.write(f"Pitch Diameter Gear: {d2:.2f} mm")
+st.write(f"Torque: {T:.2f} Nm")
+st.write(f"Tangential Force: {Ft:.2f} N")
+st.write(f"Radial Force: {Fr:.2f} N")
+st.write(f"Bending Stress: {stress:.2f} Pa")
+st.write(f"AGMA Stress: {agma_stress:.2f} Pa")
+st.write(f"Factor of Safety: {FOS:.2f}")
 
-            initThreeJS() {
-                const container = document.getElementById('canvas-container');
-                this.scene = new THREE.Scene();
-                this.camera = new THREE.PerspectiveCamera(45, container.offsetWidth / container.offsetHeight, 0.1, 1000);
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                this.renderer.setSize(container.offsetWidth, container.offsetHeight);
-                container.appendChild(this.renderer.domElement);
+# ================= AI SUGGESTION =================
+st.subheader("🤖 AI Suggestion")
 
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                this.scene.add(ambientLight);
-                const pointLight = new THREE.PointLight(0x60a5fa, 1.2);
-                pointLight.position.set(10, 10, 10);
-                this.scene.add(pointLight);
+if FOS < 1.5:
+    st.warning("Increase module or reduce load")
+elif FOS > 3:
+    st.info("Design is over-safe. Reduce material")
+else:
+    st.success("Optimal design")
 
-                this.camera.position.z = 25;
-                this.gears = new THREE.Group();
-                this.scene.add(this.gears);
+# ================= GRAPH =================
+st.subheader("📈 Stress vs Module")
 
-                const animate = () => {
-                    requestAnimationFrame(animate);
-                    this.gears.children.forEach((g, i) => {
-                        const ratio = parseFloat(document.getElementById('ratio').value) || 1;
-                        g.rotation.z += (i === 0 ? 0.01 : -0.01 / ratio);
-                    });
-                    this.renderer.render(this.scene, this.camera);
-                };
-                animate();
-            }
+modules = np.linspace(2, 10, 20)
+stress_values = []
 
-            initChart() {
-                const ctx = document.getElementById('loadChart').getContext('2d');
-                this.chart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Tangential', 'Dynamic', 'Wear', 'Static'],
-                        datasets: [{
-                            label: 'Loads (N)',
-                            data: [0, 0, 0, 0],
-                            backgroundColor: ['#60a5fa', '#f59e0b', '#10b981', '#ef4444'],
-                            borderRadius: 5
-                        }]
-                    },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                            x: { ticks: { color: '#94a3b8' } }
-                        }
-                    }
-                });
-            }
+for mod in modules:
+    d_temp = mod * Z1
+    Ft_temp = (2 * T * 1000) / d_temp
+    stress_temp = Ft_temp / (10 * mod * mod * Y)
+    stress_values.append(stress_temp)
 
-            log(msg, color = 'slate-400') {
-                const logBox = document.getElementById('outputLog');
-                const entry = document.createElement('div');
-                entry.className = `text-${color} border-l-2 border-current pl-2 py-1 bg-white/5 mb-1`;
-                entry.innerHTML = `> ${msg}`;
-                logBox.prepend(entry);
-            }
+fig, ax = plt.subplots()
+ax.plot(modules, stress_values)
+ax.set_xlabel("Module")
+ax.set_ylabel("Stress")
+st.pyplot(fig)
 
-            calculate() {
-                document.getElementById('outputLog').innerHTML = '';
-                const P = parseFloat(document.getElementById('power').value) * 1000;
-                const N1 = parseFloat(document.getElementById('rpm').value);
-                const Z1 = parseInt(document.getElementById('z1').value) || 18;
-                const i = parseFloat(document.getElementById('ratio').value) || 1;
-                const Z2 = Math.round(Z1 * i);
-                const mat = MATERIALS[document.getElementById('material').value];
+# ================= TABLE =================
+data = pd.DataFrame({
+    "Module": modules,
+    "Stress": stress_values
+})
 
-                // 1. Weaker Member Selection (Lewis Form Factor)
-                const Y1 = 0.154 - (0.912 / Z1); 
-                const Y2 = 0.154 - (0.912 / Z2);
-                const strength1 = mat.sigma0 * Y1;
-                const strength2 = mat.sigma0 * Y2;
-                const isPinionWeaker = strength1 <= strength2;
-                
-                this.log(`Pinion σY: ${strength1.toFixed(2)} | Gear σY: ${strength2.toFixed(2)}`);
-                this.log(isPinionWeaker ? "DESIGNING FOR PINION (Weaker)" : "DESIGNING FOR GEAR (Weaker)", "blue-400");
+st.dataframe(data)
 
-                // 2. Initial Module Estimation 
-                const torque = (9.55e6 * (P / 1000)) / N1;
-                let m = Math.ceil(Math.pow((torque * 2) / (mat.sigma0 * 10 * Math.PI * Y1 * Z1), 1/3));
-                if (m < 2) m = 2; 
+# ================= CSV DOWNLOAD =================
+csv = data.to_csv(index=False).encode('utf-8')
+st.download_button("Download CSV", csv, "gear_data.csv")
 
-                // 3. Gear Dimensions
-                const d1 = m * Z1;
-                const d2 = m * Z2;
-                const b = 10 * m; 
-                const v = (Math.PI * d1 * N1) / 60000;
-                const Cv = 3 / (3 + v); 
+# ================= GEAR DRAW =================
+st.subheader("⚙️ Gear Model")
 
-                // 4. Load Calculations 
-                const Wt = P / v; 
-                const Ws = mat.sigma0 * b * Math.PI * m * Y1 * Cv; 
-                const Wd = Wt + (21 * v * (b * 0.05 + Wt)) / (21 * v + Math.sqrt(b * 0.05 + Wt)); 
-                const Q = (2 * i) / (i + 1);
-                const K = (mat.bhn * mat.bhn * 1.4) / 1e6; 
-                const Ww = d1 * b * Q * K; 
+theta = np.linspace(0, 2*np.pi, Z1 * 2)
+r_base = d1 / 2
+r_tooth = r_base * 1.2
 
-                // UI Updates
-                document.getElementById('resModule').innerText = `${m} mm`;
-                document.getElementById('resFOS').innerText = (Ws / Wt).toFixed(2);
-                
-                this.update3D(d1, d2);
-                this.chart.data.datasets[0].data = [Wt, Wd, Ww, Ws];
-                this.chart.update();
+x = []
+y = []
 
-                this.log(`W_tangential: ${Wt.toFixed(0)}N`);
-                this.log(`W_dynamic: ${Wd.toFixed(0)}N`, "amber-400");
-                this.log(`W_wear: ${Ww.toFixed(0)}N`, "emerald-400");
-                
-                if (Ww < Wd) this.log("WARNING: Wear strength insufficient. Increase Hardness!", "red-500");
-                else this.log("Design Safe for Wear & Dynamic Loading", "emerald-500");
-            }
+for idx, t in enumerate(theta):
+    r = r_base if idx % 2 == 0 else r_tooth
+    x.append(r * np.cos(t))
+    y.append(r * np.sin(t))
 
-            update3D(d1, d2) {
-                this.gears.clear();
-                const mat = new THREE.MeshPhongMaterial({ color: 0x334155, shininess: 80, flatShading: true, wireframe: true });
-                
-                const pinionGeo = new THREE.CylinderGeometry(d1/12, d1/12, 2, 32);
-                const gearGeo = new THREE.CylinderGeometry(d2/12, d2/12, 2, 32);
-                
-                const pMesh = new THREE.Mesh(pinionGeo, mat);
-                const gMesh = new THREE.Mesh(gearGeo, mat);
-                
-                pMesh.rotation.x = Math.PI/2;
-                gMesh.rotation.x = Math.PI/2;
-                gMesh.position.x = (d1 + d2) / 24;
+fig2, ax2 = plt.subplots()
+ax2.plot(x, y)
+ax2.set_aspect('equal')
+st.pyplot(fig2)
 
-                this.gears.add(pMesh, gMesh);
-                this.gears.position.x = -(d1 + d2) / 48;
-            }
-        }
+# ================= ROTATION =================
+st.subheader("🔄 Rotation")
 
-        window.onload = () => new GearEngine();
-    </script>
-</body>
-</html>
+angle = st.slider("Rotate", 0, 360, 0)
+
+x_rot = []
+y_rot = []
+
+for idx, t in enumerate(theta):
+    r = r_base if idx % 2 == 0 else r_tooth
+    x_rot.append(r * np.cos(t + np.radians(angle)))
+    y_rot.append(r * np.sin(t + np.radians(angle)))
+
+fig3, ax3 = plt.subplots()
+ax3.plot(x_rot, y_rot)
+ax3.set_aspect('equal')
+st.pyplot(fig3)
+
+# ================= AUTO ANIMATION =================
+if st.button("Start Animation"):
+    for ang in range(0, 360, 15):
+        fig_anim, ax_anim = plt.subplots()
+        xr, yr = [], []
+        for idx, t in enumerate(theta):
+            r = r_base if idx % 2 == 0 else r_tooth
+            xr.append(r * np.cos(t + np.radians(ang)))
+            yr.append(r * np.sin(t + np.radians(ang)))
+        ax_anim.plot(xr, yr)
+        ax_anim.set_aspect('equal')
+        st.pyplot(fig_anim)
+        time.sleep(0.1)
+
+# ================= PDF =================
+def create_pdf():
+    doc = SimpleDocTemplate("gear_report.pdf")
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("Gear Analysis Report", styles["Title"]))
+    content.append(Paragraph(f"Teeth: {Z1}", styles["Normal"]))
+    content.append(Paragraph(f"Stress: {stress:.2f}", styles["Normal"]))
+    content.append(Paragraph(f"AGMA Stress: {agma_stress:.2f}", styles["Normal"]))
+    content.append(Paragraph(f"FOS: {FOS:.2f}", styles["Normal"]))
+
+    doc.build(content)
+
+if st.button("Generate PDF"):
+    create_pdf()
+    with open("gear_report.pdf", "rb") as f:
+        st.download_button("Download PDF", f, "gear_report.pdf")
