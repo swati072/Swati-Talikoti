@@ -1,329 +1,54 @@
-# Save this file as: gear_app.py
-
-import streamlit as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-
-# ================= PAGE =================
-st.set_page_config(
-    page_title="GearAnalyzer Pro",
-    layout="wide"
-)
-
-st.title("⚙️ GearAnalyzer Pro")
-
-# ================= INPUTS =================
-st.sidebar.header("Input Parameters")
-
-gear_type = st.sidebar.selectbox(
-    "Gear Type",
-    ["Spur Gear", "Helical Gear"]
-)
-
-material = st.sidebar.selectbox(
-    "Material",
-    ["Steel", "Aluminum", "Cast Iron"]
-)
-
-P = st.sidebar.number_input(
-    "Power (kW)",
-    min_value=0.1,
-    value=5.0
-)
-
-N1 = st.sidebar.number_input(
-    "Input Speed (RPM)",
-    min_value=1.0,
-    value=1000.0
-)
-
-gear_ratio = st.sidebar.number_input(
-    "Gear Ratio",
-    min_value=1.0,
-    value=2.0
-)
-
-module = st.sidebar.number_input(
-    "Module (mm)",
-    min_value=1.0,
-    value=5.0
-)
-
-Z1 = st.sidebar.number_input(
-    "Pinion Teeth",
-    min_value=5,
-    value=10
-)
-
-pressure_angle = st.sidebar.number_input(
-    "Pressure Angle (deg)",
-    min_value=10.0,
-    value=20.0
-)
-
-# ================= MATERIAL DATA =================
-material_strength = {
-    "Steel": 250e6,
-    "Aluminum": 150e6,
-    "Cast Iron": 100e6
-}
-
-# ================= CALCULATIONS =================
-
-phi = np.radians(pressure_angle)
-
-Z2 = int(Z1 * gear_ratio)
-
-N2 = N1 / gear_ratio
-
-d1 = module * Z1
-d2 = module * Z2
-
-T = (9550 * P) / N1
-
-Ft = (2 * T * 1000) / d1
-
-Fr = Ft * np.tan(phi)
-
-# Lewis Form Factor
-Y = max(0.1, 0.154 - (0.912 / Z1))
-
-b = 10 * module
-
-stress = Ft / (b * module * Y)
-
-# AGMA Approximation
-Kv = 1.25
-Ks = 1.0
-Km = 1.1
-
-agma_stress = stress * Kv * Ks * Km
-
-# Factor of Safety
-sigma_allow = material_strength[material]
-
-FOS = sigma_allow / agma_stress
-
-# ================= RESULTS =================
-
-st.header("📊 Results")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric("Output Speed", f"{N2:.2f} RPM")
-    st.metric("Torque", f"{T:.2f} Nm")
-    st.metric("Tangential Force", f"{Ft:.2f} N")
-    st.metric("Radial Force", f"{Fr:.2f} N")
-
-with col2:
-    st.metric("AGMA Stress", f"{agma_stress:.2f} Pa")
-    st.metric("Factor of Safety", f"{FOS:.2f}")
-    st.metric("Gear Teeth", f"{Z2}")
-    st.metric("Pitch Diameter", f"{d2:.2f} mm")
-
-# ================= SAFETY =================
-
-st.header("🛡 Safety Analysis")
-
-if FOS < 1.5:
-    st.error("Unsafe Design")
-elif FOS < 3:
-    st.warning("Moderate Safety")
-else:
-    st.success("Safe Design")
-
-# ================= AI SUGGESTION =================
-
-st.header("🤖 AI Suggestion")
-
-if FOS < 1.5:
-    st.write("Increase module or reduce power load.")
-elif FOS > 4:
-    st.write("Design is over-safe. Material can be optimized.")
-else:
-    st.write("Design is optimized.")
-
-# ================= GRAPH =================
-
-st.header("📈 Stress vs Module")
-
-modules = np.linspace(2, 10, 20)
-
-stress_values = []
-
-for m in modules:
-
-    d_temp = m * Z1
-
-    Ft_temp = (2 * T * 1000) / d_temp
-
-    stress_temp = Ft_temp / (10 * m * m * Y)
-
-    stress_values.append(stress_temp)
-
-fig, ax = plt.subplots()
-
-ax.plot(modules, stress_values)
-
-ax.set_xlabel("Module")
-
-ax.set_ylabel("Stress")
-
-ax.set_title("Stress Variation")
-
-st.pyplot(fig)
-
-# ================= DATA TABLE =================
-
-st.header("📋 Data Table")
-
-df = pd.DataFrame({
-    "Module": modules,
-    "Stress": stress_values
-})
-
-st.dataframe(df)
-
-# ================= CSV DOWNLOAD =================
-
-csv = df.to_csv(index=False).encode("utf-8")
-
-st.download_button(
-    "Download CSV",
-    csv,
-    "gear_results.csv",
-    "text/csv"
-)
-
-# ================= GEAR DRAWING =================
-
-st.header("⚙️ Gear Visualization")
-
-theta = np.linspace(0, 2*np.pi, Z1 * 2)
-
-r_base = d1 / 2
-
-r_tooth = r_base * 1.2
-
-x = []
-y = []
-
-for i, t in enumerate(theta):
-
-    r = r_base if i % 2 == 0 else r_tooth
-
-    x.append(r * np.cos(t))
-
-    y.append(r * np.sin(t))
-
-fig2, ax2 = plt.subplots()
-
-ax2.plot(x, y)
-
-ax2.set_aspect("equal")
-
-ax2.set_title(f"{Z1} Teeth Gear")
-
-st.pyplot(fig2)
-
-# ================= ROTATION =================
-
-st.header("🔄 Gear Rotation")
-
-angle = st.slider(
-    "Rotation Angle",
-    0,
-    360,
-    0
-)
-
-xr = []
-yr = []
-
-for i, t in enumerate(theta):
-
-    r = r_base if i % 2 == 0 else r_tooth
-
-    xr.append(
-        r * np.cos(t + np.radians(angle))
-    )
-
-    yr.append(
-        r * np.sin(t + np.radians(angle))
-    )
-
-fig3, ax3 = plt.subplots()
-
-ax3.plot(xr, yr)
-
-ax3.set_aspect("equal")
-
-st.pyplot(fig3)
-
-# ================= PDF REPORT =================
-
-def generate_pdf():
-
-    doc = SimpleDocTemplate(
-        "gear_report.pdf"
-    )
-
-    styles = getSampleStyleSheet()
-
-    content = []
-
-    content.append(
-        Paragraph(
-            "Gear Analysis Report",
-            styles["Title"]
-        )
-    )
-
-    content.append(
-        Paragraph(
-            f"Gear Type: {gear_type}",
-            styles["Normal"]
-        )
-    )
-
-    content.append(
-        Paragraph(
-            f"Material: {material}",
-            styles["Normal"]
-        )
-    )
-
-    content.append(
-        Paragraph(
-            f"AGMA Stress: {agma_stress:.2f} Pa",
-            styles["Normal"]
-        )
-    )
-
-    content.append(
-        Paragraph(
-            f"Factor of Safety: {FOS:.2f}",
-            styles["Normal"]
-        )
-    )
-
-    doc.build(content)
-
-if st.button("Generate PDF Report"):
-
-    generate_pdf()
-
-    with open(
-        "gear_report.pdf",
-        "rb"
-    ) as file:
-
-        st.download_button(
-            "Download PDF",
-            file,
-            "gear_report.pdf"
-        )
+/ Gear
+            const gearRad = (z2 * m * visualScale) / 2;
+            gearMesh = new THREE.Mesh(new THREE.CylinderGeometry(gearRad, gearRad, 4.8, 32), matGear);
+            gearMesh.rotation.x = Math.PI / 2;
+            
+            const centerDist = ((m * z1) + (m * z2)) * visualScale / 2;
+            gearMesh.position.x = centerDist;
+            
+            // Casing (Bounding Box)
+            const casingWidth = centerDist + (gearRad * 2) + 4;
+            const casingHeight = (gearRad * 2) + 4;
+            const casingGeo = new THREE.BoxGeometry(casingWidth, casingHeight, 8);
+            casingMesh = new THREE.Mesh(casingGeo, matCasing);
+            casingMesh.position.x = centerDist / 2;
+            casingMesh.position.z = -1;
+
+            scene.add(pinionMesh, gearMesh, casingMesh);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(pinionMesh && gearMesh) {
+                // Pinion rotation
+                pinionMesh.rotation.y += 0.015;
+                // Sync gear rotation based on ratio
+                const r = pinionMesh.geometry.parameters.radiusTop / gearMesh.geometry.parameters.radiusTop;
+                gearMesh.rotation.y -= 0.015 * r;
+            }
+            renderer.render(scene, camera);
+        }
+
+        // Handle Responsive Resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Event Listeners for UI
+        document.getElementById('calculateBtn').onclick = runEngineeringCheck;
+        
+        const inputs = ['power', 'rpm', 'bhn'];
+        inputs.forEach(id => {
+            document.getElementById(id).oninput = (e) => {
+                document.getElementById(${id}Val).innerText = e.target.value;
+            };
+        });
+
+        // Initialize on load
+        window.onload = init3D;
+    </script>
+</body>
+</html>
