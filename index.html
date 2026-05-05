@@ -3,17 +3,17 @@
 <head>
   <title>Spur Gear Calculator</title>
 
-  <!-- Light Mode Styling -->
   <style>
     body {
       font-family: Arial;
       background: #ffffff;
       color: #333;
       text-align: center;
+      margin: 0;
     }
 
     .container {
-      width: 400px;
+      width: 420px;
       margin: auto;
       padding: 20px;
     }
@@ -31,6 +31,7 @@
       display: block;
       margin: 10px auto;
       padding: 8px;
+      width: 80%;
     }
 
     .page {
@@ -40,6 +41,18 @@
     .active {
       display: block;
     }
+
+    canvas {
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
+
+    #results {
+      margin-top: 40px;
+      text-align: left;
+      padding: 10px;
+      border-top: 2px solid #ddd;
+    }
   </style>
 </head>
 
@@ -48,16 +61,20 @@
 <!-- PAGE 1 -->
 <div id="page1" class="container page active">
   <h1>Spur Gear Calculation</h1>
-  <p>Step-by-step gear design calculator</p>
+  <p>This tool helps you calculate spur gear parameters step-by-step.</p>
   <button onclick="goToPage(2)">Next</button>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="container page">
   <h2>Select Question Type</h2>
+
   <button onclick="selectType(1)">Type 1</button>
   <button onclick="selectType(2)">Type 2</button>
   <button onclick="selectType(3)">Type 3</button>
+
+  <br>
+  <button onclick="goToPage(1)">Back</button>
 </div>
 
 <!-- PAGE 3 -->
@@ -85,20 +102,21 @@
   <!-- Gear Diagram -->
   <canvas id="gearCanvas" width="300" height="300"></canvas>
 
-  <!-- Results -->
+  <!-- Scroll-based Results -->
   <div id="results"></div>
 
   <!-- Actions -->
+  <button onclick="goToPage(2)">Back</button>
   <button onclick="downloadPDF()">Download PDF</button>
   <button onclick="window.print()">Print</button>
 
 </div>
 
-<!-- PDF LIBRARY -->
+<!-- PDF LIB -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-/* PAGE NAVIGATION */
+/* NAVIGATION */
 function goToPage(page) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById("page" + page).classList.add("active");
@@ -113,16 +131,22 @@ function selectType(type) {
 function calculate() {
   let teeth = parseInt(document.getElementById("teeth").value);
   let module = parseFloat(document.getElementById("module").value);
+  let material = document.getElementById("material").value;
 
   let pitchDiameter = module * teeth;
   let addendum = module;
   let dedendum = 1.25 * module;
+  let circularPitch = Math.PI * module;
 
   let resultHTML = `
     <h3>Detailed Calculation</h3>
-    Pitch Diameter = ${pitchDiameter}<br>
+
+    <b>Selected Material:</b> ${material}<br><br>
+
+    Pitch Diameter = Module × Teeth = ${module} × ${teeth} = ${pitchDiameter}<br>
     Addendum = ${addendum}<br>
-    Dedendum = ${dedendum}
+    Dedendum = ${dedendum}<br>
+    Circular Pitch = π × Module = ${circularPitch.toFixed(2)}<br>
   `;
 
   document.getElementById("results").innerHTML = resultHTML;
@@ -130,7 +154,7 @@ function calculate() {
   drawGear(teeth);
 }
 
-/* DRAW GEAR */
+/* GEAR DRAWING */
 function drawGear(teeth) {
   let canvas = document.getElementById("gearCanvas");
   let ctx = canvas.getContext("2d");
