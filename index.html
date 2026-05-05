@@ -3,55 +3,70 @@
 <head>
   <title>Spur Gear Calculator</title>
 
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
     body {
-      font-family: Arial;
-      background: #ffffff;
-      color: #333;
-      text-align: center;
       margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      color: #333;
     }
 
     .container {
-      width: 420px;
+      max-width: 500px;
       margin: auto;
       padding: 20px;
+      text-align: center;
+    }
+
+    h1, h2 {
+      color: #4a6fa5;
     }
 
     button {
-      margin: 10px;
-      padding: 10px 20px;
-      background: #4CAF50;
+      background: #4a6fa5;
       color: white;
       border: none;
+      padding: 10px 20px;
+      margin: 8px;
+      border-radius: 6px;
       cursor: pointer;
     }
 
+    button:hover {
+      background: #3b5c8a;
+    }
+
     input, select {
-      display: block;
-      margin: 10px auto;
-      padding: 8px;
       width: 80%;
-    }
-
-    .page {
-      display: none;
-    }
-
-    .active {
+      padding: 8px;
+      margin: 10px auto;
       display: block;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
 
-    canvas {
+    .page { display: none; }
+    .active { display: block; }
+
+    #canvas3d {
+      width: 100%;
+      height: 300px;
       margin-top: 20px;
-      border: 1px solid #ccc;
     }
 
     #results {
       margin-top: 40px;
+      padding: 15px;
+      background: #ffffff;
+      border-radius: 8px;
       text-align: left;
-      padding: 10px;
-      border-top: 2px solid #ddd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
   </style>
 </head>
@@ -61,18 +76,16 @@
 <!-- PAGE 1 -->
 <div id="page1" class="container page active">
   <h1>Spur Gear Calculation</h1>
-  <p>This tool helps you calculate spur gear parameters step-by-step.</p>
+  <p>Professional gear design & analysis tool</p>
   <button onclick="goToPage(2)">Next</button>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="container page">
   <h2>Select Question Type</h2>
-
   <button onclick="selectType(1)">Type 1</button>
   <button onclick="selectType(2)">Type 2</button>
   <button onclick="selectType(3)">Type 3</button>
-
   <br>
   <button onclick="goToPage(1)">Back</button>
 </div>
@@ -80,119 +93,115 @@
 <!-- PAGE 3 -->
 <div id="page3" class="container page">
 
-  <h2>Spur Gear Calculator</h2>
+  <h2>Gear Calculator</h2>
 
-  <!-- Material -->
-  <label>Material:</label>
   <select id="material">
     <option>Steel</option>
     <option>Cast Iron</option>
     <option>Aluminium</option>
   </select>
 
-  <!-- Inputs -->
-  <label>Number of Teeth:</label>
-  <input type="number" id="teeth" value="20">
-
-  <label>Module:</label>
-  <input type="number" id="module" value="2">
+  <input type="number" id="teeth" value="20" placeholder="Number of Teeth">
+  <input type="number" id="module" value="2" placeholder="Module">
 
   <button onclick="calculate()">Calculate</button>
 
-  <!-- Gear Diagram -->
-  <canvas id="gearCanvas" width="300" height="300"></canvas>
+  <!-- 3D Canvas -->
+  <div id="canvas3d"></div>
 
-  <!-- Scroll-based Results -->
+  <!-- Results -->
   <div id="results"></div>
 
-  <!-- Actions -->
   <button onclick="goToPage(2)">Back</button>
   <button onclick="downloadPDF()">Download PDF</button>
   <button onclick="window.print()">Print</button>
 
 </div>
 
-<!-- PDF LIB -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <script>
 /* NAVIGATION */
-function goToPage(page) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.getElementById("page" + page).classList.add("active");
+function goToPage(p) {
+  document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
+  document.getElementById("page"+p).classList.add("active");
 }
 
-function selectType(type) {
-  localStorage.setItem("questionType", type);
+function selectType(t) {
+  localStorage.setItem("type", t);
   goToPage(3);
 }
 
 /* CALCULATION */
 function calculate() {
-  let teeth = parseInt(document.getElementById("teeth").value);
-  let module = parseFloat(document.getElementById("module").value);
+  let teeth = +document.getElementById("teeth").value;
+  let module = +document.getElementById("module").value;
   let material = document.getElementById("material").value;
 
-  let pitchDiameter = module * teeth;
-  let addendum = module;
-  let dedendum = 1.25 * module;
-  let circularPitch = Math.PI * module;
+  let pitchDiameter = teeth * module;
 
-  let resultHTML = `
+  document.getElementById("results").innerHTML = `
     <h3>Detailed Calculation</h3>
-
-    <b>Selected Material:</b> ${material}<br><br>
-
-    Pitch Diameter = Module × Teeth = ${module} × ${teeth} = ${pitchDiameter}<br>
-    Addendum = ${addendum}<br>
-    Dedendum = ${dedendum}<br>
-    Circular Pitch = π × Module = ${circularPitch.toFixed(2)}<br>
+    Material: ${material}<br><br>
+    Pitch Diameter = ${teeth} × ${module} = ${pitchDiameter}<br>
+    Addendum = ${module}<br>
+    Dedendum = ${1.25 * module}<br>
+    Circular Pitch = ${(Math.PI * module).toFixed(2)}
   `;
 
-  document.getElementById("results").innerHTML = resultHTML;
-
-  drawGear(teeth);
+  create3DGear(teeth);
 }
 
-/* GEAR DRAWING */
-function drawGear(teeth) {
-  let canvas = document.getElementById("gearCanvas");
-  let ctx = canvas.getContext("2d");
+/* 3D GEAR */
+let scene, camera, renderer, gear1, gear2;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function create3DGear(teeth) {
 
-  let centerX = 150;
-  let centerY = 150;
-  let radius = 80;
+  document.getElementById("canvas3d").innerHTML = "";
 
-  for (let i = 0; i < teeth; i++) {
-    let angle = (i * 2 * Math.PI) / teeth;
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
 
-    let x = centerX + radius * Math.cos(angle);
-    let y = centerY + radius * Math.sin(angle);
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(300, 300);
+  document.getElementById("canvas3d").appendChild(renderer.domElement);
 
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.lineTo(x, y);
-    ctx.stroke();
+  let geometry = new THREE.CylinderGeometry(2, 2, 1, teeth);
+  let material = new THREE.MeshNormalMaterial();
+
+  gear1 = new THREE.Mesh(geometry, material);
+  gear2 = new THREE.Mesh(geometry, material);
+
+  gear2.position.x = 4;
+
+  scene.add(gear1);
+  scene.add(gear2);
+
+  camera.position.z = 6;
+
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (gear1 && gear2) {
+    gear1.rotation.z += 0.01;
+    gear2.rotation.z -= 0.01;
   }
 
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-  ctx.stroke();
+  renderer.render(scene, camera);
 }
 
-/* PDF DOWNLOAD */
+/* PDF */
 function downloadPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  let content = document.getElementById("results").innerText;
+  let text = document.getElementById("results").innerText;
 
   doc.text("Spur Gear Calculation", 10, 10);
-  doc.text(content, 10, 20);
+  doc.text(text, 10, 20);
 
-  doc.save("gear_calculation.pdf");
+  doc.save("gear.pdf");
 }
 </script>
 
