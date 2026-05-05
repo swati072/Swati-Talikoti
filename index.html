@@ -1,209 +1,132 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Spur Gear Calculator</title>
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
-  <!-- Three.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+// Simple gear SVG generator
+const GearSVG = ({ teeth }) => {
+  const radius = 80;
+  const cx = 100;
+  const cy = 100;
+  const angleStep = (2 * Math.PI) / teeth;
 
-  <!-- PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #f5f7fa;
-      color: #333;
-    }
-
-    .container {
-      max-width: 500px;
-      margin: auto;
-      padding: 20px;
-      text-align: center;
-    }
-
-    h1, h2 {
-      color: #4a6fa5;
-    }
-
-    button {
-      background: #4a6fa5;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      margin: 8px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #3b5c8a;
-    }
-
-    input, select {
-      width: 80%;
-      padding: 8px;
-      margin: 10px auto;
-      display: block;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-
-    .page { display: none; }
-    .active { display: block; }
-
-    #canvas3d {
-      width: 100%;
-      height: 300px;
-      margin-top: 20px;
-    }
-
-    #results {
-      margin-top: 40px;
-      padding: 15px;
-      background: #ffffff;
-      border-radius: 8px;
-      text-align: left;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-  </style>
-</head>
-
-<body>
-
-<!-- PAGE 1 -->
-<div id="page1" class="container page active">
-  <h1>Spur Gear Calculation</h1>
-  <p>Professional gear design & analysis tool</p>
-  <button onclick="goToPage(2)">Next</button>
-</div>
-
-<!-- PAGE 2 -->
-<div id="page2" class="container page">
-  <h2>Select Question Type</h2>
-  <button onclick="selectType(1)">Type 1</button>
-  <button onclick="selectType(2)">Type 2</button>
-  <button onclick="selectType(3)">Type 3</button>
-  <br>
-  <button onclick="goToPage(1)">Back</button>
-</div>
-
-<!-- PAGE 3 -->
-<div id="page3" class="container page">
-
-  <h2>Gear Calculator</h2>
-
-  <select id="material">
-    <option>Steel</option>
-    <option>Cast Iron</option>
-    <option>Aluminium</option>
-  </select>
-
-  <input type="number" id="teeth" value="20" placeholder="Number of Teeth">
-  <input type="number" id="module" value="2" placeholder="Module">
-
-  <button onclick="calculate()">Calculate</button>
-
-  <!-- 3D Canvas -->
-  <div id="canvas3d"></div>
-
-  <!-- Results -->
-  <div id="results"></div>
-
-  <button onclick="goToPage(2)">Back</button>
-  <button onclick="downloadPDF()">Download PDF</button>
-  <button onclick="window.print()">Print</button>
-
-</div>
-
-<script>
-/* NAVIGATION */
-function goToPage(p) {
-  document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
-  document.getElementById("page"+p).classList.add("active");
-}
-
-function selectType(t) {
-  localStorage.setItem("type", t);
-  goToPage(3);
-}
-
-/* CALCULATION */
-function calculate() {
-  let teeth = +document.getElementById("teeth").value;
-  let module = +document.getElementById("module").value;
-  let material = document.getElementById("material").value;
-
-  let pitchDiameter = teeth * module;
-
-  document.getElementById("results").innerHTML = `
-    <h3>Detailed Calculation</h3>
-    Material: ${material}<br><br>
-    Pitch Diameter = ${teeth} × ${module} = ${pitchDiameter}<br>
-    Addendum = ${module}<br>
-    Dedendum = ${1.25 * module}<br>
-    Circular Pitch = ${(Math.PI * module).toFixed(2)}
-  `;
-
-  create3DGear(teeth);
-}
-
-/* 3D GEAR */
-let scene, camera, renderer, gear1, gear2;
-
-function create3DGear(teeth) {
-
-  document.getElementById("canvas3d").innerHTML = "";
-
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-
-  renderer = new THREE.WebGLRenderer();
-  renderer.setSize(300, 300);
-  document.getElementById("canvas3d").appendChild(renderer.domElement);
-
-  let geometry = new THREE.CylinderGeometry(2, 2, 1, teeth);
-  let material = new THREE.MeshNormalMaterial();
-
-  gear1 = new THREE.Mesh(geometry, material);
-  gear2 = new THREE.Mesh(geometry, material);
-
-  gear2.position.x = 4;
-
-  scene.add(gear1);
-  scene.add(gear2);
-
-  camera.position.z = 6;
-
-  animate();
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  if (gear1 && gear2) {
-    gear1.rotation.z += 0.01;
-    gear2.rotation.z -= 0.01;
+  const points = [];
+  for (let i = 0; i < teeth; i++) {
+    const angle = i * angleStep;
+    const r = i % 2 === 0 ? radius : radius - 10;
+    points.push([
+      cx + r * Math.cos(angle),
+      cy + r * Math.sin(angle)
+    ]);
   }
 
-  renderer.render(scene, camera);
+  const path = points.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(" ") + " Z";
+
+  return (
+    <svg width="200" height="200" className="animate-spin-slow">
+      <path d={path} fill="#94a3b8" stroke="#475569" />
+    </svg>
+  );
+};
+
+export default function App() {
+  const [page, setPage] = useState(1);
+  const [questionType, setQuestionType] = useState(null);
+  const [teeth, setTeeth] = useState(20);
+  const [module, setModule] = useState(2);
+  const [material, setMaterial] = useState("Steel");
+
+  const pitchDiameter = module * teeth;
+
+  const downloadPDF = () => {
+    window.print();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-6">
+      {page === 1 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <Card className="p-6">
+            <CardContent>
+              <h1 className="text-3xl font-bold mb-4">Spur Gear Calculation</h1>
+              <p className="mb-6">This tool helps calculate spur gear parameters and visualize gear meshing.</p>
+              <Button onClick={() => setPage(2)}>Next</Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {page === 2 && (
+        <div>
+          <h2 className="text-2xl mb-4">Select Question Type</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {[1, 2, 3].map((type) => (
+              <Card key={type} onClick={() => { setQuestionType(type); setPage(3); }} className="cursor-pointer">
+                <CardContent>
+                  <p>Type {type}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {page === 3 && (
+        <div>
+          <h2 className="text-xl mb-4">Input Values</h2>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <input
+              type="number"
+              placeholder="Teeth"
+              value={teeth}
+              onChange={(e) => setTeeth(Number(e.target.value))}
+              className="p-2 border rounded"
+            />
+            <input
+              type="number"
+              placeholder="Module"
+              value={module}
+              onChange={(e) => setModule(Number(e.target.value))}
+              className="p-2 border rounded"
+            />
+            <select value={material} onChange={(e) => setMaterial(e.target.value)} className="p-2 border rounded">
+              <option>Steel</option>
+              <option>Aluminum</option>
+              <option>Cast Iron</option>
+            </select>
+          </div>
+
+          <div className="flex gap-10 items-center">
+            <GearSVG teeth={teeth} />
+            <GearSVG teeth={teeth} />
+          </div>
+
+          <div className="mt-10">
+            <h3 className="text-lg font-semibold">Detailed Calculation</h3>
+            <p>Teeth (Z): {teeth}</p>
+            <p>Module (m): {module}</p>
+            <p>Pitch Diameter (d): {pitchDiameter}</p>
+            <p>Material: {material}</p>
+          </div>
+
+          <div className="mt-6 flex gap-4">
+            <Button onClick={() => setPage(2)}>Back</Button>
+            <Button onClick={downloadPDF}>Download PDF</Button>
+            <Button onClick={() => window.print()}>Print</Button>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .animate-spin-slow {
+          animation: spin 10s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
 }
-
-/* PDF */
-function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  let text = document.getElementById("results").innerText;
-
-  doc.text("Spur Gear Calculation", 10, 10);
-  doc.text(text, 10, 20);
-
-  doc.save("gear.pdf");
-}
-</script>
-
-</body>
-</html>
