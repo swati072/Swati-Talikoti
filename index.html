@@ -1,132 +1,205 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVT & Spur Pro | Engineering Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #1e293b; margin: 0; overflow: hidden; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05); }
+        input, select { background: #ffffff !important; border: 1px solid #cbd5e1 !important; color: #334155 !important; padding: 0.4rem; font-size: 0.75rem; border-radius: 6px; width: 100%; }
+        #splash-screen { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .option-card { background: white; padding: 2rem; border-radius: 12px; width: 300px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s; }
+        .option-card:hover { transform: translateY(-5px); border-color: #3b82f6; }
+    </style>
+</head>
+<body>
 
-// Simple gear SVG generator
-const GearSVG = ({ teeth }) => {
-  const radius = 80;
-  const cx = 100;
-  const cy = 100;
-  const angleStep = (2 * Math.PI) / teeth;
-
-  const points = [];
-  for (let i = 0; i < teeth; i++) {
-    const angle = i * angleStep;
-    const r = i % 2 === 0 ? radius : radius - 10;
-    points.push([
-      cx + r * Math.cos(angle),
-      cy + r * Math.sin(angle)
-    ]);
-  }
-
-  const path = points.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(" ") + " Z";
-
-  return (
-    <svg width="200" height="200" className="animate-spin-slow">
-      <path d={path} fill="#94a3b8" stroke="#475569" />
-    </svg>
-  );
-};
-
-export default function App() {
-  const [page, setPage] = useState(1);
-  const [questionType, setQuestionType] = useState(null);
-  const [teeth, setTeeth] = useState(20);
-  const [module, setModule] = useState(2);
-  const [material, setMaterial] = useState("Steel");
-
-  const pitchDiameter = module * teeth;
-
-  const downloadPDF = () => {
-    window.print();
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 p-6">
-      {page === 1 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <Card className="p-6">
-            <CardContent>
-              <h1 className="text-3xl font-bold mb-4">Spur Gear Calculation</h1>
-              <p className="mb-6">This tool helps calculate spur gear parameters and visualize gear meshing.</p>
-              <Button onClick={() => setPage(2)}>Next</Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {page === 2 && (
-        <div>
-          <h2 className="text-2xl mb-4">Select Question Type</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map((type) => (
-              <Card key={type} onClick={() => { setQuestionType(type); setPage(3); }} className="cursor-pointer">
-                <CardContent>
-                  <p>Type {type}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+    <div id="splash-screen">
+        <div class="max-w-md w-full px-8 text-center">
+            <h2 class="text-white text-3xl font-bold mb-10">Transmission Lab</h2>
+            <div class="option-card text-left" onclick="launchEngine('cvt')">
+                <h3 class="font-bold text-slate-800">CVT System Design</h3>
+                <p class="text-xs text-slate-500 mt-2">Variator pulleys, belt velocity, and torque tracking.</p>
+            </div>
         </div>
-      )}
-
-      {page === 3 && (
-        <div>
-          <h2 className="text-xl mb-4">Input Values</h2>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <input
-              type="number"
-              placeholder="Teeth"
-              value={teeth}
-              onChange={(e) => setTeeth(Number(e.target.value))}
-              className="p-2 border rounded"
-            />
-            <input
-              type="number"
-              placeholder="Module"
-              value={module}
-              onChange={(e) => setModule(Number(e.target.value))}
-              className="p-2 border rounded"
-            />
-            <select value={material} onChange={(e) => setMaterial(e.target.value)} className="p-2 border rounded">
-              <option>Steel</option>
-              <option>Aluminum</option>
-              <option>Cast Iron</option>
-            </select>
-          </div>
-
-          <div className="flex gap-10 items-center">
-            <GearSVG teeth={teeth} />
-            <GearSVG teeth={teeth} />
-          </div>
-
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold">Detailed Calculation</h3>
-            <p>Teeth (Z): {teeth}</p>
-            <p>Module (m): {module}</p>
-            <p>Pitch Diameter (d): {pitchDiameter}</p>
-            <p>Material: {material}</p>
-          </div>
-
-          <div className="mt-6 flex gap-4">
-            <Button onClick={() => setPage(2)}>Back</Button>
-            <Button onClick={downloadPDF}>Download PDF</Button>
-            <Button onClick={() => window.print()}>Print</Button>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        .animate-spin-slow {
-          animation: spin 10s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
-  );
-}
+
+    <div id="main-engine" class="h-screen flex flex-col hidden">
+        <header class="h-12 glass flex items-center justify-between px-8 border-b border-black/5 z-20">
+            <h1 class="text-xs font-bold tracking-widest uppercase">CVT Design <span class="text-blue-600">Pro</span></h1>
+            <button onclick="generatePDF()" class="bg-blue-600 text-white text-[10px] px-4 py-1.5 rounded-full font-bold">GENERATE REPORT</button>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            <aside class="w-80 glass border-r border-black/5 p-6 space-y-4 overflow-y-auto z-10">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase">System Parameters</h3>
+                
+                <div>
+                    <label class="text-[9px] text-slate-500">Input Power (kW)</label>
+                    <input type="number" id="in-p" value="12.5" oninput="updateDesign()">
+                </div>
+                <div>
+                    <label class="text-[9px] text-slate-500">Input RPM</label>
+                    <input type="number" id="in-n" value="3800" oninput="updateDesign()">
+                </div>
+
+                <hr class="border-slate-100">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase">CVT Variator Limits</h3>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-[9px] text-slate-500">Min Ratio</label><input type="number" id="cvt-min" value="0.8" step="0.1" oninput="updateDesign()"></div>
+                    <div><label class="text-[9px] text-slate-500">Max Ratio</label><input type="number" id="cvt-max" value="3.2" step="0.1" oninput="updateDesign()"></div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] text-slate-500">Current Simulation Ratio</label>
+                    <input type="range" id="cvt-slider" min="0.8" max="3.2" step="0.1" value="1.0" oninput="updateDesign()">
+                    <div class="flex justify-between text-[10px] mono text-blue-600 mt-1">
+                        <span>High Speed</span>
+                        <span id="slider-val">1.0</span>
+                        <span>Low Speed</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] text-slate-500">Belt Width (mm)</label>
+                    <input type="number" id="belt-w" value="30" oninput="updateDesign()">
+                </div>
+            </aside>
+
+            <main class="flex-1 relative bg-[#f8fafc]">
+                <div id="render-area" class="w-full h-full"></div>
+            </main>
+
+            <aside class="w-96 glass border-l border-black/5 p-6 overflow-y-auto z-10">
+                <h2 class="text-xs font-bold text-slate-600 mb-4 uppercase">CVT Analytics</h2>
+                <div id="step-output" class="text-[11px] mono space-y-4"></div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls, pulley1, pulley2;
+        let rot = 0;
+
+        function launchEngine() {
+            document.getElementById('splash-screen').style.display = 'none';
+            document.getElementById('main-engine').classList.remove('hidden');
+            const min = document.getElementById('cvt-min').value;
+            const max = document.getElementById('cvt-max').value;
+            document.getElementById('cvt-slider').min = min;
+            document.getElementById('cvt-slider').max = max;
+            init();
+            updateDesign();
+        }
+
+        function init() {
+            const area = document.getElementById('render-area');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf1f5f9);
+            camera = new THREE.PerspectiveCamera(40, area.clientWidth / area.clientHeight, 1, 1000);
+            camera.position.set(120, 100, 150);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(area.clientWidth, area.clientHeight);
+            area.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            animate();
+        }
+
+        function updateDesign() {
+            const P = parseFloat(document.getElementById('in-p').value);
+            const N1 = parseFloat(document.getElementById('in-n').value);
+            const ratio = parseFloat(document.getElementById('cvt-slider').value);
+            const beltW = parseFloat(document.getElementById('belt-w').value);
+            
+            document.getElementById('slider-val').innerText = ratio.toFixed(2);
+
+            // Calculations
+            const N2 = N1 / ratio;
+            const Torque = (P * 60000) / (2 * Math.PI * N1); // Input Torque in Nm
+            const OutTorque = Torque * ratio * 0.88; // 88% efficiency common for CVT
+
+            // Belt Velocity (assuming driver pulley mean diameter of 100mm at ratio 1.0)
+            const D1 = 100 / Math.sqrt(ratio); 
+            const D2 = D1 * ratio;
+            const v = (Math.PI * D1 * N1) / 60000;
+
+            document.getElementById('step-output').innerHTML = `
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded">
+                    <b class="text-blue-700">1. SPEED CALCULATION</b><br>
+                    Output RPM = ${N1} / ${ratio} = <b>${N2.toFixed(1)} RPM</b><br>
+                    Belt Linear Velocity: <b>${v.toFixed(2)} m/s</b>
+                </div>
+                <div class="p-3 bg-slate-100 rounded">
+                    <b class="text-slate-700">2. TORQUE & EFFICIENCY</b><br>
+                    Input Torque: ${Torque.toFixed(2)} Nm<br>
+                    Estimated Output: <b>${OutTorque.toFixed(2)} Nm</b><br>
+                    <span class="text-[9px] text-slate-400">(Includes 12% frictional loss)</span>
+                </div>
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded text-amber-800">
+                    <b>3. BELT STRESS</b><br>
+                    Tangential Force (Ft): ${( (P*1000)/v ).toFixed(1)} N<br>
+                    Min Belt Width Req: <b>${( (P*1000)/(v*5) ).toFixed(1)} mm</b>
+                </div>
+            `;
+
+            update3D(D1, D2);
+        }
+
+        function update3D(d1, d2) {
+            if (pulley1) scene.remove(pulley1);
+            if (pulley2) scene.remove(pulley2);
+
+            pulley1 = createPulley(d1/2, 0x3b82f6);
+            pulley2 = createPulley(d2/2, 0x64748b);
+            
+            pulley1.position.x = -50;
+            pulley2.position.x = 50;
+
+            scene.add(pulley1);
+            scene.add(pulley2);
+        }
+
+        function createPulley(r, color) {
+            const group = new THREE.Group();
+            // Create two cones to represent CVT Variator sheaves
+            const sheaveGeo = new THREE.CylinderGeometry(r, r*0.8, 5, 32);
+            const m1 = new THREE.Mesh(sheaveGeo, new THREE.MeshStandardMaterial({ color: color, metalness: 0.8, roughness: 0.2 }));
+            const m2 = m1.clone();
+            
+            m1.position.z = 6;
+            m2.position.z = -6;
+            m2.rotation.x = Math.PI;
+
+            group.add(m1);
+            group.add(m2);
+            group.rotation.x = Math.PI/2;
+            return group;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (pulley1 && pulley2) {
+                const ratio = parseFloat(document.getElementById('cvt-slider').value);
+                rot += 0.05;
+                pulley1.rotation.y = rot;
+                pulley2.rotation.y = rot / ratio;
+            }
+            if(controls) controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
