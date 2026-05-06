@@ -3,849 +3,510 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spur Gear Design Suite V2.0</title>
-  
-  <!-- Esthetic Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Roboto+Mono:wght@300&display=swap" rel="stylesheet">
-  
-  <!-- External Libraries for 3D and PDF -->
+  <title>Professional Spur Gear Calculation Suite</title>
+
+  <!-- External Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- BufferGeometryUtils is required to merge the complex gear shapes (holes, hubs, body) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
   <style>
-    /* Esthetic & Silent Professional Colors */
+    /* AESTHETIC "SILENT" OFFICIAL WORK COLORS */
     :root {
-      --bg-color: #f8fafc; /* Light Gray-Blue */
-      --header-bg: #ecf0f1;
-      --heading-color: #2c3e50; /* Deep Professional Blue */
-      --text-color: #34495e; /* Mid-Gray Blue */
-      --accent-color: #3498db; /* Professional Blue */
-      --action-color: #27ae60; /* Positive Green */
-      --border-color: #bdc3c7;
+      --bg-light: #f4f6f8;         /* Ghost White/Gray */
       --card-bg: #ffffff;
-      --silent-blue: #ecf0f1;
+      --text-main: #334155;        /* Slate 700 */
+      --text-muted: #64748b;       /* Slate 500 */
+      --primary: #475569;          /* Slate 600 */
+      --primary-hover: #1e293b;    /* Slate 800 */
+      --accent: #94a3b8;           /* Slate 400 */
+      --border: #e2e8f0;           /* Slate 200 */
+      --action: #3b82f6;           /* Soft Blue for Calculate */
+      --action-hover: #2563eb;
     }
 
     body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-main);
       margin: 0;
-      padding: 0;
-      font-family: 'Montserrat', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      overflow-x: hidden;
-      display: flex;
-      flex-direction: column;
       min-height: 100vh;
-    }
-
-    /* --- Views Management --- */
-    .view {
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
+    }
+
+    h1, h2, h3 { font-weight: 500; letter-spacing: 0.5px; }
+    h1 { color: var(--primary); font-size: 2.2rem; margin-bottom: 10px; }
+    p { color: var(--text-muted); line-height: 1.6; }
+
+    /* PAGE NAVIGATION LOGIC */
+    .page-container {
       width: 100%;
-      padding: 2rem;
+      max-width: 1200px;
+      padding: 40px 20px;
       box-sizing: border-box;
+      display: none; /* Hidden by default */
       opacity: 0;
-      transition: opacity 0.5s ease-in-out;
+      transition: opacity 0.4s ease-in-out;
     }
-
-    .view.active {
-      display: flex;
+    .page-container.active {
+      display: block;
       opacity: 1;
+      animation: fadeIn 0.5s ease forwards;
     }
 
-    /* --- Common Elements --- */
-    h1, h2, h3 { font-family: 'Montserrat', sans-serif; font-weight: 600; color: var(--heading-color); margin: 0 0 1rem 0; text-transform: uppercase; letter-spacing: 1.5px; }
-    p { margin: 0 0 1.5rem 0; line-height: 1.6; max-width: 700px; text-align: center; }
-    
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* BUTTONS */
     .btn {
-      padding: 10px 25px;
+      padding: 12px 28px;
       border: none;
-      border-radius: 4px;
-      font-family: 'Montserrat', sans-serif;
+      border-radius: 6px;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-size: 0.9rem;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
     }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-secondary { background: white; color: var(--text-main); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-action { background: var(--action); color: white; width: 100%; margin-top: 20px; }
+    .btn-action:hover { background: var(--action-hover); }
+    .btn-group { display: flex; gap: 15px; margin-top: 30px; }
 
-    .btn-main { background-color: var(--accent-color); color: white; }
-    .btn-main:hover { background-color: #2980b9; transform: translateY(-1px); }
-    
-    .btn-back { background-color: #bdc3c7; color: white; }
-    .btn-back:hover { background-color: #95a5a6; }
-    
-    .btn-calc { background-color: var(--action-color); color: white; }
-    .btn-calc:hover { background-color: #219150; }
-
-    .btn-group { display: flex; gap: 1rem; margin-top: 1.5rem; }
-
-    /* --- Page 1 --- */
-    #page1 .btn-group { margin-top: 3rem; }
-    #page1 h1 { font-size: 3rem; }
-
-    /* --- Page 2 --- */
+    /* CARDS FOR PAGE 2 */
+    .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
     .type-card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 2rem;
-      width: 300px;
+      padding: 30px 20px;
       text-align: center;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
+    .type-card:hover { border-color: var(--primary); box-shadow: 0 10px 15px rgba(0,0,0,0.05); transform: translateY(-3px); }
 
-    .type-card:hover {
-      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-      transform: translateY(-5px);
-      border-color: var(--accent-color);
-    }
+    /* PAGE 3 LAYOUT */
+    .workbench { display: grid; grid-template-columns: 350px 1fr; gap: 30px; margin-top: 30px; }
     
-    .type-card h3 { font-size: 1.2rem; }
-    .type-card p { font-size: 0.9rem; max-width: 100%; margin-bottom: 0; }
-    
-    .selection-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 2rem; }
-
-    /* --- Page 3 --- */
-    .calc-container {
-      display: grid;
-      grid-template-columns: 350px 1fr;
-      gap: 2rem;
-      width: 100%;
-      max-width: 1400px;
-      margin-top: 2rem;
-    }
-
-    .input-column {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+      padding: 25px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
 
-    .output-column {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; color: var(--primary); }
+    .form-group input, .form-group select {
+      width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 1rem; color: var(--text-main); box-sizing: border-box; background: var(--bg-light);
     }
+    .form-group input:focus { outline: none; border-color: var(--primary); background: white; }
 
-    .threed-panel {
-      position: relative;
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
+    /* 3D CANVAS */
+    #canvas-container {
       width: 100%;
-      height: 600px;
+      height: 500px;
+      background: #eef2f6;
+      border-radius: 8px;
+      border: 1px solid var(--border);
       overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .canvas-hint {
+      position: absolute; bottom: 15px; left: 15px; background: rgba(255,255,255,0.8);
+      padding: 5px 15px; border-radius: 4px; font-size: 0.85rem; color: var(--text-muted);
     }
 
-    #three-canvas {
-      width: 100%;
-      height: 100%;
-    }
+    /* RESULTS SECTION */
+    #results-section { display: none; margin-top: 30px; }
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+    .result-item { border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .result-item span { display: block; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .result-item strong { font-size: 1.1rem; color: var(--primary); }
 
-    .detailed-calc-panel {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      height: 300px;
-      overflow-y: auto;
-    }
-
-    .formula-item {
-      font-family: 'Roboto Mono', monospace;
-      font-size: 0.9rem;
-      color: #7f8c8d;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid #ecf0f1;
-    }
-
-    .calc-row-label { color: #95a5a6; text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
-    .calc-value { color: var(--heading-color); font-weight: 600; font-size: 1.1rem; }
-
-    /* --- Forms & Inputs --- */
-    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
-    label { font-size: 0.8rem; text-transform: uppercase; color: #95a5a6; font-weight: 500; letter-spacing: 1px; }
-    input, select {
-      padding: 10px;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.95rem;
-      background-color: #fafcfd;
-    }
-    input:focus, select:focus { border-color: var(--accent-color); outline: none; }
-
-    /* --- Footer --- */
-    .view-footer {
-      width: 100%;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      margin-top: auto;
-      background-color: var(--header-bg);
-      border-top: 1px solid var(--border-color);
-      box-sizing: border-box;
-    }
-
-    /* --- Animation Control Overlay --- */
-    .animation-overlay {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      display: flex;
-      gap: 5px;
-      background: rgba(255,255,255,0.7);
-      padding: 5px;
-      border-radius: 4px;
-      z-index: 10;
-    }
-    .overlay-btn {
-      padding: 5px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      color: #95a5a6;
-      font-size: 1.2rem;
-    }
-    .overlay-btn:hover { color: var(--accent-color); }
-
-    /* --- Print View Styling --- */
+    /* PRINT STYLES */
     @media print {
-      body * { visibility: hidden; }
-      .print-report, .print-report * { visibility: visible; }
-      .print-report {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        font-family: serif;
-        padding: 20px;
-      }
-      .btn-group { display: none; }
-    }
-
-    .print-report {
-      display: none;
-      background-color: white;
-      color: black;
-      max-width: 800px;
-      margin: 0 auto;
+      body { background: white; }
+      .btn-group, .panel:first-child, #canvas-container { display: none !important; }
+      .page-container { padding: 0; }
+      .panel { border: none; box-shadow: none; }
     }
   </style>
 </head>
 <body>
 
-  <!-- --- Header --- -->
-  <header style="padding: 1rem 2rem; background-color: var(--header-bg); border-bottom: 1px solid var(--border-color);">
-    <h3 style="margin: 0; font-size: 1.1rem;">SPUR GEAR DESIGN SUITE V2.0</h3>
-  </header>
-
-  <!-- --- MAIN CONTENT --- -->
-  <main style="flex: 1; display: flex; flex-direction: column;">
-    
-    <!-- === PAGE 1: LANDING === -->
-    <section id="page1" class="view active">
-      <h1>SPUR GEAR CALCULATION</h1>
-      <p>Welcome to the official engineering workbench. Start your precision design process with our interactive tools and multi-gear simulations.</p>
-      <div class="btn-group">
-        <button class="btn btn-main" onclick="goNext('page2')">NEXT OPTION</button>
-      </div>
-    </section>
-
-    <!-- === PAGE 2: TYPE SELECTION === -->
-    <section id="page2" class="view">
-      <h2>SELECT DESIGN PATH</h2>
-      <p>Choose your calculation type. Our platform supports various complex engineering workflows.</p>
+  <!-- ================= PAGE 1: LANDING ================= -->
+  <div id="page1" class="page-container active">
+    <div style="text-align: center; margin-top: 10vh;">
+      <h1 style="font-size: 3rem;">SPUR GEAR CALCULATION</h1>
+      <p style="font-size: 1.2rem; max-width: 600px; margin: 0 auto;">Standardized mechanical engineering suite for visualizing and calculating meshing spur gears with precise parallel rotation.</p>
       
-      <div class="selection-grid">
-        <div class="type-card" onclick="startType1()">
-          <h3>TYPE 1: STANDARD DESIGN</h3>
-          <p>Based on power, torque, and material properties.</p>
-        </div>
-        <div class="type-card" onclick="startType1()">
-          <h3>TYPE 2: GEOMETRY PATH</h3>
-          <p>Calculate gear and pinion details from defined meshing parameters.</p>
-        </div>
-        <div class="type-card" onclick="startType1()">
-          <h3>TYPE 3: STRESS ANALYSIS</h3>
-          <p>Detailed Lewis and Hertz stress evaluation.</p>
-        </div>
+      <div class="btn-group" style="justify-content: center; margin-top: 50px;">
+        <button class="btn btn-primary" onclick="navigate('page2')">NEXT OPTION</button>
       </div>
-      
-      <footer class="view-footer">
-        <button class="btn btn-back" onclick="goBack()">BACK</button>
-      </footer>
-    </section>
+    </div>
+  </div>
 
-    <!-- === PAGE 3: CALCULATION & 3D SIMULATION === -->
-    <section id="page3" class="view">
-      <h2>SPUR GEAR DESIGN & SIMULATION</h2>
-      <p>Define material, input parameters, and view a real-time, interactive 3D simulation of multiple meshing gears.</p>
+  <!-- ================= PAGE 2: SELECTION ================= -->
+  <div id="page2" class="page-container">
+    <h2>Select Calculation Type</h2>
+    <p>Choose the specific design parameter path you wish to calculate.</p>
 
-      <div class="calc-container">
-        <!-- Input Column -->
-        <aside class="input-column">
-          <h3>DESIGN INPUTS</h3>
-          <div class="form-group">
-            <label for="material">Material Selection</label>
-            <select id="material">
-              <option value="AISI 1020 Steel">AISI 1020 Steel</option>
-              <option value="AISI 4140 Steel">AISI 4140 Steel</option>
-              <option value="Cast Iron Grade 30">Cast Iron Grade 30</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="teethGear">Number of Teeth - Gear (50 teeth req)</label>
-            <input type="number" id="teethGear" value="50" min="10">
-          </div>
-          <div class="form-group">
-            <label for="teethPinion">Number of Teeth - Pinion</label>
-            <input type="number" id="teethPinion" value="20" min="10">
-          </div>
-          <div class="form-group">
-            <label for="module">Module (mm)</label>
-            <input type="number" id="module" value="3.5" step="0.1">
-          </div>
-          <div class="form-group">
-            <label for="power">Power (kW)</label>
-            <input type="number" id="power" value="15.0">
-          </div>
-          <div class="form-group">
-            <label for="speed">Pinion Speed (RPM)</label>
-            <input type="number" id="speed" value="1450">
-          </div>
-          <button class="btn btn-calc" onclick="calculate()">CALCULATE & UPDATE</button>
-        </aside>
+    <div class="card-grid">
+      <div class="type-card" onclick="navigate('page3')">
+        <h3>Type 1</h3>
+        <p>Standard Meshing Calculation (Power, Torque, Visualization)</p>
+      </div>
+      <div class="type-card" onclick="alert('Module under development.')">
+        <h3>Type 2</h3>
+        <p>Advanced Stress & Fatigue Analysis</p>
+      </div>
+      <div class="type-card" onclick="alert('Module under development.')">
+        <h3>Type 3</h3>
+        <p>Geometric Optimization</p>
+      </div>
+    </div>
 
-        <!-- Output Column -->
-        <div class="output-column">
-          <!-- 3D Visualization -->
-          <div class="threed-panel">
-            <canvas id="three-canvas"></canvas>
-            <div class="animation-overlay">
-              <button class="overlay-btn" id="btn-play" onclick="toggleAnimation()"><i class="fas fa-play">▶</i></button>
-              <button class="overlay-btn" id="btn-reset" onclick="resetView()"><i class="fas fa-sync-alt">↺</i></button>
-            </div>
-          </div>
-          
-          <!-- Detailed Calculation (Scroll automatically displays) -->
-          <div class="detailed-calc-panel">
-            <h3>DESIGN REPORT SUMMARY</h3>
-            <div id="quick-results-summary" class="formula-item">Click Calculate to generate report...</div>
-          </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="navigate('page1')">BACK</button>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 3: CALCULATION & 3D ================= -->
+  <div id="page3" class="page-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px;">
+      <h2>Type 1: Detailed Gear Design</h2>
+      <button class="btn btn-secondary" onclick="navigate('page2')">BACK TO SELECTION</button>
+    </div>
+
+    <div class="workbench">
+      <!-- INPUT FORM -->
+      <div class="panel">
+        <h3 style="margin-top:0;">Input Parameters</h3>
+        
+        <div class="form-group">
+          <label>Material</label>
+          <select id="material">
+            <option value="Steel (16MnCr5)">Steel (16MnCr5)</option>
+            <option value="Cast Iron">Cast Iron</option>
+            <option value="Nylon/Delrin">Nylon/Delrin</option>
+          </select>
         </div>
+        
+        <div class="form-group">
+          <label>Number of Teeth (Large Gear)</label>
+          <input type="number" id="teeth1" value="50" min="10" max="150">
+        </div>
+
+        <div class="form-group">
+          <label>Number of Teeth (Pinion/Small)</label>
+          <input type="number" id="teeth2" value="20" min="10" max="100">
+        </div>
+
+        <div class="form-group">
+          <label>Module (m) in mm</label>
+          <input type="number" id="module" value="3" step="0.5" min="1" max="10">
+        </div>
+
+        <button class="btn btn-action" onclick="runCalculation()">CALCULATE & RENDER</button>
       </div>
 
-      <footer class="view-footer">
-        <div class="btn-group">
-          <button class="btn btn-back" onclick="goBack()">BACK</button>
-          <button class="btn btn-main" onclick="downloadPDF()">DOWNLOAD PDF</button>
-          <button class="btn btn-main" onclick="printReport()">PRINT REPORT</button>
+      <!-- 3D VISUALIZATION -->
+      <div>
+        <div id="canvas-container">
+          <p id="canvas-placeholder" style="color: var(--accent);">Awaiting calculation to render 3D model...</p>
+          <div class="canvas-hint">Left Click: Rotate | Scroll: Zoom | Right Click: Pan</div>
         </div>
-      </footer>
-
-      <!-- Hidden Printable Report Section -->
-      <div id="printableReport" class="print-report">
-        <h2>SPUR GEAR DESIGN REPORT</h2>
-        <p style="text-align: left;">Generated with Spur Gear Design Suite V2.0.</p>
-        <hr>
-        <h3>INPUT DATA</h3>
-        <ul id="printInputsList"></ul>
-        <hr>
-        <h3>CALCULATED RESULTS</h3>
-        <table id="printCalcResultsTable" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid black; padding: 8px; text-align: left;">Parameter</th>
-              <th style="border: 1px solid black; padding: 8px; text-align: left;">Value</th>
-              <th style="border: 1px solid black; padding: 8px; text-align: left;">Unit</th>
-            </tr>
-          </thead>
-          <tbody id="printCalcResultsBody"></tbody>
-        </table>
       </div>
-    </section>
+    </div>
 
-  </main>
+    <!-- CALCULATION RESULTS -->
+    <div id="results-section" class="panel">
+      <h3 style="margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Detailed Mathematical Calculation</h3>
+      <div class="results-grid" id="calc-output">
+        <!-- Injected via JS -->
+      </div>
 
-  <!-- --- JAVASCRIPT --- -->
-  <script type="module">
-    // --- View State ---
-    const history = ['page1'];
-    function goNext(pageId) {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      <div class="btn-group" style="justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px;">
+        <button class="btn btn-secondary" onclick="generatePDF()">DOWNLOAD PDF</button>
+        <button class="btn btn-primary" onclick="window.print()">PRINT REPORT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= APPLICATION LOGIC ================= -->
+  <script>
+    // --- Navigation ---
+    function navigate(pageId) {
+      document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active'));
       document.getElementById(pageId).classList.add('active');
-      history.push(pageId);
+      window.scrollTo(0,0);
     }
-    function goBack() {
-      if (history.length > 1) {
-        history.pop();
-        const prevPage = history[history.length - 1];
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById(prevPage).classList.add('active');
-      }
-    }
-    window.goNext = goNext; window.goBack = goBack;
 
-    function startType1() {
-      goNext('page3');
-      if(!initDone) { init3D(); initDone = true; }
-      calculate();
-    }
-    window.startType1 = startType1;
+    // --- 3D Scene Setup ---
+    let scene, camera, renderer, controls;
+    let gear1Mesh, gear2Mesh;
+    let is3DReady = false;
 
-    // --- 3D Scene Variables ---
-    let initDone = false;
-    let scene, camera, renderer, controls, clock;
-    let materialGearMesh, materialPinionMesh;
-    const gears = [];
-    const shafts = [];
-    let isAnimationActive = true;
-    let canvasWidth, canvasHeight;
-
-    // --- Esthetic Material Parameters (match the ref image) ---
-    const estheticMaterialParams = {
-      color: 0x475569, // Dark industrial slate/metal
-      metalness: 0.8,
-      roughness: 0.4,
-    };
-    const metalMaterial = new THREE.MeshStandardMaterial(estheticMaterialParams);
-    const brightMetalMaterial = new THREE.MeshStandardMaterial({
-      color: 0xc0c0c0, metalness: 0.9, roughness: 0.1
-    });
-
-    // --- Initial 3D Setup ---
     function init3D() {
-      const container = document.getElementById('three-canvas');
-      canvasWidth = container.clientWidth; canvasHeight = container.clientHeight;
-      
+      const container = document.getElementById('canvas-container');
+      document.getElementById('canvas-placeholder').style.display = 'none';
+
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xf8fafc); // Esthetic background
+      scene.background = new THREE.Color(0xeef2f6);
 
-      camera = new THREE.PerspectiveCamera(50, canvasWidth / canvasHeight, 0.1, 1000);
-      camera.position.set(0, 150, 200);
-
-      renderer = new THREE.WebGLRenderer({ canvas: container, antialias: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(canvasWidth, canvasHeight);
-
-      // --- Esthetic Lighting ---
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-      scene.add(ambientLight);
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
       
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
-      directionalLight.position.set(50, 100, 70).normalize();
-      scene.add(directionalLight);
-      
-      const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
-      directionalLight2.position.set(-50, -50, -20).normalize();
-      scene.add(directionalLight2);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.shadowMap.enabled = true;
+      container.appendChild(renderer.domElement);
 
-      // --- Esthetic OrbitControls ---
+      // Controls (Allow rotating in all directions)
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
-      controls.screenSpacePanning = false;
-      controls.minDistance = 50; controls.maxDistance = 600;
-      controls.autoRotate = isAnimationActive; // Link autoRotate with state
-      controls.autoRotateSpeed = 0.8; // Esthetic speed
-      
-      clock = new THREE.Clock();
-      
-      window.addEventListener('resize', onWindowResize, false);
-      
+
+      // Professional Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(50, 100, 50);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      fillLight.position.set(-50, 0, -50);
+      scene.add(fillLight);
+
+      is3DReady = true;
       animate();
     }
 
-    // --- Geometry Helper Functions (matching ref image) ---
-    function generateGearShape(teeth, module, faceWidth) {
+    // --- Complex Gear Generation (Mimicking the image) ---
+    function createComplexGearGeometry(teeth, module, isLargeGear) {
       const pitchRadius = (teeth * module) / 2;
-      const addendumRadius = pitchRadius + module;
-      const dedendumRadius = pitchRadius - 1.25 * module;
-      const toothDepth = addendumRadius - dedendumRadius;
-      const baseRadius = pitchRadius * Math.cos(20 * Math.PI / 180);
+      const addendum = pitchRadius + module;
+      const dedendum = pitchRadius - (1.25 * module);
+      const faceWidth = module * 6; // Standard thickness
 
       const shape = new THREE.Shape();
-      const segmentsPerTooth = 10;
-      
-      for (let i = 0; i < teeth; i++) {
-        const theta_start = (i / teeth) * 2 * Math.PI;
-        const theta_mid = ((i + 0.5) / teeth) * 2 * Math.PI;
-        const theta_end = ((i + 1) / teeth) * 2 * Math.PI;
+      const numPoints = teeth * 2;
 
-        // Involute profile (simplified)
-        for (let j = 0; j <= segmentsPerTooth; j++) {
-          const t = j / segmentsPerTooth;
-          const theta = theta_start + (t * (theta_mid - theta_start));
-          // Simplified profile, in practice use involute
-          const r = dedendumRadius + (j / segmentsPerTooth) * toothDepth;
-          shape.lineTo(Math.cos(theta) * r, Math.sin(theta) * r);
+      // Outer tooth profile
+      for (let i = 0; i <= numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        const radius = i % 2 === 0 ? addendum : dedendum;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) shape.moveTo(x, y);
+        else shape.lineTo(x, y);
+      }
+
+      // Center Hub & Keyway Setup
+      const centerHoleRadius = dedendum * (isLargeGear ? 0.2 : 0.3);
+      const centerHole = new THREE.Path();
+      centerHole.absarc(0, 0, centerHoleRadius, 0, Math.PI * 2, false);
+      
+      // Add Keyway notch
+      const keyWidth = module * 1.5;
+      const keyDepth = module;
+      centerHole.moveTo(-keyWidth/2, centerHoleRadius);
+      centerHole.lineTo(keyWidth/2, centerHoleRadius);
+      centerHole.lineTo(keyWidth/2, centerHoleRadius + keyDepth);
+      centerHole.lineTo(-keyWidth/2, centerHoleRadius + keyDepth);
+      centerHole.lineTo(-keyWidth/2, centerHoleRadius);
+      shape.holes.push(centerHole);
+
+      // If it's the large gear, mimic the 6 holes from the user's image
+      if (isLargeGear && teeth >= 30) {
+        const holeRadius = (dedendum - centerHoleRadius) * 0.3;
+        const holeDistance = centerHoleRadius + holeRadius * 1.5;
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const hole = new THREE.Path();
+          hole.absarc(Math.cos(angle) * holeDistance, Math.sin(angle) * holeDistance, holeRadius, 0, Math.PI * 2, false);
+          shape.holes.push(hole);
         }
-        
-        for (let j = 0; j <= segmentsPerTooth; j++) {
-          const t = j / segmentsPerTooth;
-          const theta = theta_mid + (t * (theta_end - theta_mid));
-          const r = addendumRadius - (j / segmentsPerTooth) * toothDepth;
-          shape.lineTo(Math.cos(theta) * r, Math.sin(theta) * r);
-        }
-      }
-      
-      shape.closePath();
-      return new THREE.ExtrudeGeometry(shape, { depth: faceWidth, bevelEnabled: false });
-    }
-
-    // Function to generate the specific large gear geometry (from image_0.png)
-    function generateComplexGearGeometry(teeth, module, faceWidth) {
-      const pitchRadius = (teeth * module) / 2;
-      const addendumRadius = pitchRadius + module;
-      const dedendumRadius = pitchRadius - 1.25 * module;
-      const toothDepth = addendumRadius - dedendumRadius;
-      const baseRadius = pitchRadius * Math.cos(20 * Math.PI / 180);
-
-      const shape = new THREE.Shape();
-      const segmentsPerTooth = 10;
-      
-      // Outside boundary (simplified for performance)
-      shape.moveTo(addendumRadius, 0);
-      for(let i=0; i<=72; i++){
-          let ang = i * (Math.PI/36);
-          shape.lineTo(Math.cos(ang) * addendumRadius, Math.sin(ang) * addendumRadius);
-      }
-      
-      // Inside cutout to form spokes/holes (6 holes require specific logic)
-      const hubInnerRadius = dedendumRadius * 0.4;
-      const hubOuterRadius = dedendumRadius * 0.6;
-      
-      // Main central hole
-      const centerHolePath = new THREE.Path();
-      centerHolePath.absarc(0,0, hubInnerRadius, 0, Math.PI * 2, true);
-      shape.holes.push(centerHolePath);
-      
-      // The specific keyway
-      const kw_w = 4; const kw_h = 2; // Keyway dims
-      const kwPath = new THREE.Path();
-      kwPath.moveTo(-kw_w, hubInnerRadius);
-      kwPath.lineTo(kw_w, hubInnerRadius);
-      kwPath.lineTo(kw_w, hubInnerRadius + kw_h);
-      kwPath.lineTo(-kw_w, hubInnerRadius + kw_h);
-      kwPath.lineTo(-kw_w, hubInnerRadius);
-      shape.holes.push(kwPath);
-      
-      // Six outer holes
-      for(let i=0; i<6; i++) {
-        const ang = (i/6) * Math.PI * 2;
-        const radius = dedendumRadius * 0.7;
-        const outerHoleRadius = 12;
-        const path = new THREE.Path();
-        path.absarc(Math.cos(ang) * radius, Math.sin(ang) * radius, outerHoleRadius, 0, Math.PI*2, true);
-        shape.holes.push(path);
       }
 
-      // Esthetic Extrude
-      const extrudeSettings = { depth: faceWidth, bevelEnabled: true, bevelThickness: 1, bevelSize: 0.5, bevelSegments: 10 };
-      const gearBody = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      
-      // Add the bosses (inner and outer hubs)
-      const innerBossGeo = new THREE.CylinderGeometry(hubOuterRadius, hubOuterRadius, 4, 32);
-      innerBossGeo.translate(0, faceWidth/2, 0);
-      
-      const outerBossGeo = new THREE.CylinderGeometry(dedendumRadius+2, dedendumRadius+2, 2, 64);
-      outerBossGeo.translate(0, faceWidth/2 - 1, 0);
-      
-      return THREE.BufferGeometryUtils.mergeBufferGeometries([gearBody, innerBossGeo, outerBossGeo]);
+      // Extrude the base gear shape
+      const extrudeSettings = { depth: faceWidth, bevelEnabled: true, bevelSegments: 2, bevelSize: 0.5, bevelThickness: 0.5 };
+      let gearGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      gearGeo.center();
+
+      // Add raised center hub (Boss) to match image
+      const hubRadius = centerHoleRadius * 1.8;
+      const hubThickness = faceWidth * 1.2;
+      const hubGeo = new THREE.CylinderGeometry(hubRadius, hubRadius, hubThickness, 32);
+      hubGeo.rotateX(Math.PI / 2);
+
+      // Add Middle Shaft
+      const shaftRadius = centerHoleRadius * 0.95;
+      const shaftLen = faceWidth * 2.5;
+      const shaftGeo = new THREE.CylinderGeometry(shaftRadius, shaftRadius, shaftLen, 32);
+      shaftGeo.rotateX(Math.PI / 2);
+
+      // Merge geometries using BufferGeometryUtils
+      let mergedGeo = THREE.BufferGeometryUtils.mergeBufferGeometries([gearGeo, hubGeo, shaftGeo]);
+      return mergedGeo;
     }
 
-    // Function to generate the pinion (matching smaller gear in image_0.png)
-    function generateComplexPinionGeometry(teeth, module, faceWidth) {
-       const pitchRadius = (teeth * module) / 2;
-       const addendumRadius = pitchRadius + module;
-       const dedendumRadius = pitchRadius - 1.25 * module;
-       const hubOuterRadius = dedendumRadius * 0.8;
-       const hubInnerRadius = dedendumRadius * 0.5;
+    function buildMeshingGears(t1, t2, m) {
+      if (gear1Mesh) scene.remove(gear1Mesh);
+      if (gear2Mesh) scene.remove(gear2Mesh);
 
-       const shape = new THREE.Shape();
-       shape.moveTo(addendumRadius, 0);
-       for(let i=0; i<=72; i++){
-          let ang = i * (Math.PI/36);
-          shape.lineTo(Math.cos(ang) * addendumRadius, Math.sin(ang) * addendumRadius);
-       }
-       
-       const centerHolePath = new THREE.Path();
-       centerHolePath.absarc(0,0, hubInnerRadius, 0, Math.PI * 2, true);
-       shape.holes.push(centerHolePath);
-       
-       // Specific keyway
-       const kw_w = 2.5; const kw_h = 1.5;
-       const kwPath = new THREE.Path();
-       kwPath.moveTo(-kw_w, hubInnerRadius);
-       kwPath.lineTo(kw_w, hubInnerRadius);
-       kwPath.lineTo(kw_w, hubInnerRadius + kw_h);
-       kwPath.lineTo(-kw_w, hubInnerRadius + kw_h);
-       kwPath.lineTo(-kw_w, hubInnerRadius);
-       shape.holes.push(kwPath);
+      // Materials (Official Dark Slate Metal style)
+      const gearMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x475569, roughness: 0.4, metalness: 0.6 
+      });
 
-       const extrudeSettings = { depth: faceWidth, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.3, bevelSegments: 5 };
-       const gearBody = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-       
-       // Add the boss (inner hub)
-       const bossGeo = new THREE.CylinderGeometry(hubOuterRadius, hubOuterRadius, 3, 32);
-       bossGeo.translate(0, faceWidth/2, 0);
-       
-       return THREE.BufferGeometryUtils.mergeBufferGeometries([gearBody, bossGeo]);
+      // Build Geometries
+      const geo1 = createComplexGearGeometry(t1, m, true);
+      const geo2 = createComplexGearGeometry(t2, m, false);
+
+      gear1Mesh = new THREE.Mesh(geo1, gearMaterial);
+      gear2Mesh = new THREE.Mesh(geo2, gearMaterial);
+      
+      gear1Mesh.castShadow = true; gear1Mesh.receiveShadow = true;
+      gear2Mesh.castShadow = true; gear2Mesh.receiveShadow = true;
+
+      // Position them to mesh perfectly
+      const r1 = (t1 * m) / 2;
+      const r2 = (t2 * m) / 2;
+      const centerDistance = r1 + r2;
+
+      gear1Mesh.position.set(-centerDistance / 2, 0, 0);
+      gear2Mesh.position.set(centerDistance / 2, 0, 0);
+
+      // Offset rotation of pinion to align teeth into gaps
+      const toothAngle2 = (Math.PI * 2) / t2;
+      gear2Mesh.rotation.z = toothAngle2 / 2;
+
+      scene.add(gear1Mesh);
+      scene.add(gear2Mesh);
+
+      // Adjust Camera to fit both gears
+      camera.position.set(0, centerDistance, centerDistance * 1.5);
+      controls.target.set(0, 0, 0);
     }
 
-    function createShaft(radius, length) {
-      const geo = new THREE.CylinderGeometry(radius, radius, length, 32);
-      geo.rotateX(Math.PI/2);
-      return new THREE.Mesh(geo, brightMetalMaterial);
-    }
-
-    // --- Update Gears Function ---
-    function updateGears() {
-      // Clear previous elements
-      gears.forEach(g => scene.remove(g)); gears.length = 0;
-      shafts.forEach(s => scene.remove(s)); shafts.length = 0;
-
-      // Inputs
-      const teethGear = parseInt(document.getElementById('teethGear').value);
-      const teethPinion = parseInt(document.getElementById('teethPinion').value);
-      const module = parseFloat(document.getElementById('module').value);
-      
-      const faceWidth = module * 8; // Esthetic face width
-      const centerDistance = ((teethGear + teethPinion) * module) / 2;
-
-      // Create Material
-      const gearGeo = generateComplexGearGeometry(teethGear, module, faceWidth);
-      const pinionGeo = generateComplexPinionGeometry(teethPinion, module, faceWidth);
-      
-      materialGearMesh = new THREE.Mesh(gearGeo, metalMaterial);
-      materialPinionMesh = new THREE.Mesh(pinionGeo, metalMaterial);
-      
-      // Position and Rotate for perfect mesh
-      materialGearMesh.position.set(-centerDistance/2, 0, 0);
-      materialPinionMesh.position.set(centerDistance/2, 0, faceWidth/2); // Align and mesh
-
-      // Offset rotation of one for meshing teeth
-      const pinionInitialOffset = (Math.PI / teethPinion);
-      materialPinionMesh.rotateZ(pinionInitialOffset);
-
-      // Add features
-      gears.push(materialGearMesh); gears.push(materialPinionMesh);
-      gears.forEach(g => scene.add(g));
-      
-      // Create and align shafts
-      const shaftLen = faceWidth * 2;
-      const s1R = (teethGear * module / 2) * 0.4 * 0.9;
-      const s2R = (teethPinion * module / 2) * 0.5 * 0.9;
-      
-      const s1 = createShaft(s1R, shaftLen); s1.position.set(-centerDistance/2, 0, faceWidth/2); shafts.push(s1);
-      const s2 = createShaft(s2R, shaftLen); s2.position.set(centerDistance/2, 0, faceWidth); shafts.push(s2);
-      
-      shafts.forEach(s => scene.add(s));
-    }
-    window.calculate = calculate; // Make globally accessible
-
-    // --- Main Design Calculation Logic ---
-    function calculate() {
-      if(!scene) return;
-      
-      // Inputs
-      const material = document.getElementById('material').value;
-      const teethGear = parseInt(document.getElementById('teethGear').value);
-      const teethPinion = parseInt(document.getElementById('teethPinion').value);
-      const module = parseFloat(document.getElementById('module').value);
-      const power_kW = parseFloat(document.getElementById('power').value);
-      const speed_pinion_rpm = parseFloat(document.getElementById('speed').value);
-      
-      // Update 3D visualization
-      updateGears();
-
-      // Calculation logic
-      const ratio = teethGear / teethPinion;
-      const pitchRadiusPinion = (teethPinion * module) / 2;
-      const pitchDiameterPinion = teethPinion * module;
-      
-      // Detailed Results populated dynamically
-      const quickResults = document.getElementById('quick-results-summary');
-      
-      // Populate results
-      resultsData.inputs = {
-        'Material': material,
-        'Teeth - Gear': teethGear,
-        'Teeth - Pinion': teethPinion,
-        'Module': `${module} mm`,
-        'Power': `${power_kW} kW`,
-        'Pinion Speed': `${speed_pinion_rpm} RPM`
-      };
-      
-      resultsData.results = {
-        'Speed Ratio': ratio.toFixed(2),
-        'Pitch Diam. Pinion': `${pitchDiameterPinion.toFixed(2)} mm`,
-        'Gear Speed': `${(speed_pinion_rpm/ratio).toFixed(1)} RPM`,
-        // Include detailed results as objects
-        'center_dist': { label: 'Center Distance', value: (((teethGear + teethPinion) * module) / 2).toFixed(2), unit: 'mm' },
-        'addendum': { label: 'Addendum', value: module.toFixed(2), unit: 'mm' },
-        'dedendum': { label: 'Dedendum', value: (1.25 * module).toFixed(2), unit: 'mm' }
-      };
-
-      // Populate Quick Results
-      quickResults.innerHTML = `
-        <div class="calc-row-label">PITCH DIAMETER (PINION)</div>
-        <div class="calc-value">${resultsData.results['Pitch Diam. Pinion']}</div>
-        <div class="calc-row-label">SPEED RATIO</div>
-        <div class="calc-value">${resultsData.results['Speed Ratio']}</div>
-      `;
-
-      // Auto-scroll to results logic
-      const resultsSection = document.getElementById('results-scroll-target');
-      resultsSection.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // Results Data Store
-    const resultsData = { inputs: {}, results: {} };
-
-    // --- Animation and controls ---
+    // --- Animation Loop ---
     function animate() {
       requestAnimationFrame(animate);
-      if (clock && isAnimationActive) {
-        const delta = clock.getDelta();
-        const pinionSpeedRad = (parseFloat(document.getElementById('speed').value) / 60) * (Math.PI * 2);
-        const ratio = parseInt(document.getElementById('teethGear').value) / parseInt(document.getElementById('teethPinion').value);
+      
+      // Parallel Rotation Engine
+      if (gear1Mesh && gear2Mesh) {
+        const t1 = parseInt(document.getElementById('teeth1').value);
+        const t2 = parseInt(document.getElementById('teeth2').value);
+        const ratio = t1 / t2;
         
-        materialPinionMesh.rotation.z += pinionSpeedRad * delta;
-        materialGearMesh.rotation.z -= (pinionSpeedRad * delta) / ratio; // Mesh in opposite directions
+        const speed = 0.005;
+        gear1Mesh.rotation.z += speed;           // Gear 1 rotates forward
+        gear2Mesh.rotation.z -= speed * ratio;   // Gear 2 rotates backward at exact ratio
       }
-      if (controls) controls.update();
+
+      controls.update();
       renderer.render(scene, camera);
     }
 
-    // --- Esthetic UI functions ---
-    function toggleAnimation() {
-      isAnimationActive = !isAnimationActive;
-      const btn = document.getElementById('btn-play');
-      btn.innerHTML = isAnimationActive ? '▶' : '⏸';
-      btn.style.color = isAnimationActive ? '#95a5a6' : var(--accent-color);
-      controls.autoRotate = isAnimationActive;
-    }
-    window.toggleAnimation = toggleAnimation;
+    // --- Main Calculation Runner ---
+    function runCalculation() {
+      if (!is3DReady) init3D();
 
-    function resetView() {
-      camera.position.set(0, 150, 200);
-      controls.target.set(0,0,0);
-      updateGears();
-    }
-    window.resetView = resetView;
+      const t1 = parseInt(document.getElementById('teeth1').value);
+      const t2 = parseInt(document.getElementById('teeth2').value);
+      const m = parseFloat(document.getElementById('module').value);
+      const material = document.getElementById('material').value;
 
-    function onWindowResize() {
-      const container = document.getElementById('three-canvas');
-      canvasWidth = container.clientWidth; canvasHeight = container.clientHeight;
-      camera.aspect = canvasWidth / canvasHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(canvasWidth, canvasHeight);
-    }
-    
-    // External Tools Functions (Print, PDF)
-    function printReport() {
-        populatePrintView();
-        window.print();
-    }
-    window.printReport = printReport;
+      // 1. Render 3D Model
+      buildMeshingGears(t1, t2, m);
 
-    function populatePrintView() {
-        const inputsList = document.getElementById('printInputsList');
-        inputsList.innerHTML = '';
-        for (const [key, value] of Object.entries(resultsData.inputs)) {
-            inputsList.innerHTML += `<li><strong>${key}:</strong> ${value}</li>`;
-        }
+      // 2. Do the Math
+      const d1 = (t1 * m).toFixed(2);
+      const d2 = (t2 * m).toFixed(2);
+      const cd = ((t1 + t2) * m / 2).toFixed(2);
+      const addendum = m.toFixed(2);
+      const dedendum = (1.25 * m).toFixed(2);
+      const gearRatio = (t1 / t2).toFixed(2);
 
-        const calcResultsBody = document.getElementById('printCalcResultsBody');
-        calcResultsBody.innerHTML = '';
-        const params = [
-            'Speed Ratio', 'Pitch Diam. Pinion', 'Gear Speed', 'center_dist', 'addendum', 'dedendum'
-        ];
-        
-        params.forEach(p => {
-          let name, val, unit;
-          if(typeof resultsData.results[p] === 'object') {
-            name = resultsData.results[p].label;
-            val = resultsData.results[p].value;
-            unit = resultsData.results[p].unit;
-          } else {
-            name = p;
-            val = resultsData.results[p];
-            unit = '';
-          }
-          calcResultsBody.innerHTML += `
-            <tr>
-              <td style="border: 1px solid black; padding: 8px;">${name}</td>
-              <td style="border: 1px solid black; padding: 8px;">${val}</td>
-              <td style="border: 1px solid black; padding: 8px;">${unit}</td>
-            </tr>
-          `;
-        });
+      // 3. Inject Results
+      document.getElementById('calc-output').innerHTML = `
+        <div class="result-item"><span>Material Selected</span><strong>${material}</strong></div>
+        <div class="result-item"><span>Gear Ratio (i)</span><strong>${gearRatio} : 1</strong></div>
+        <div class="result-item"><span>Center Distance (a)</span><strong>${cd} mm</strong></div>
+        <div class="result-item"><span>Pitch Dia Large Gear (d1)</span><strong>${d1} mm</strong></div>
+        <div class="result-item"><span>Pitch Dia Pinion (d2)</span><strong>${d2} mm</strong></div>
+        <div class="result-item"><span>Addendum (ha)</span><strong>${addendum} mm</strong></div>
+        <div class="result-item"><span>Dedendum (hf)</span><strong>${dedendum} mm</strong></div>
+        <div class="result-item"><span>Clearance (c)</span><strong>${(0.25 * m).toFixed(2)} mm</strong></div>
+      `;
+
+      // 4. Reveal & Scroll
+      const resultsDiv = document.getElementById('results-section');
+      resultsDiv.style.display = 'block';
+      setTimeout(() => resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     }
 
-    async function downloadPDF() {
-      populatePrintView(); // Prep data
+    // --- PDF Generation ---
+    function generatePDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      
-      doc.setFontSize(20);
-      doc.text('SPUR GEAR DESIGN REPORT', 20, 20);
-      doc.setFontSize(10);
-      doc.text('Generated with Spur Gear Design Suite V2.0', 20, 30);
-      doc.line(20, 35, 190, 35);
-      
-      doc.setFontSize(14);
-      doc.text('INPUT DATA', 20, 45);
-      const inputArr = [];
-      for (const [key, value] of Object.entries(resultsData.inputs)) {
-        inputArr.push([key, value]);
-      }
-      doc.autoTable({ startY: 50, head: [['Parameter', 'Value']], body: inputArr });
 
-      doc.text('CALCULATED RESULTS', 20, doc.lastAutoTable.finalY + 15);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(71, 85, 105); // Slate color
+      doc.text("Spur Gear Design Report", 20, 20);
       
-      const resultsArr = [];
-      const params = ['Speed Ratio', 'Pitch Diam. Pinion', 'Gear Speed', 'center_dist', 'addendum', 'dedendum'];
-      params.forEach(p => {
-          if(typeof resultsData.results[p] === 'object') {
-            resultsArr.push([resultsData.results[p].label, resultsData.results[p].value, resultsData.results[p].unit]);
-          } else {
-            resultsArr.push([p, resultsData.results[p], '']);
-          }
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text("Automated Engineering Calculation Suite", 20, 28);
+      doc.line(20, 32, 190, 32);
+
+      doc.setTextColor(0, 0, 0);
+      let y = 45;
+      
+      // Pull data from HTML
+      const items = document.querySelectorAll('.result-item');
+      items.forEach(item => {
+        const label = item.querySelector('span').innerText;
+        const val = item.querySelector('strong').innerText;
+        
+        doc.setFont("helvetica", "bold");
+        doc.text(`${label}:`, 20, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(val, 90, y);
+        y += 10;
       });
-      doc.autoTable({ startY: doc.lastAutoTable.finalY + 20, head: [['Parameter', 'Value', 'Unit']], body: resultsArr });
 
-      doc.save('Gear_Design_Report.pdf');
+      doc.save("Spur_Gear_Calculation_Report.pdf");
     }
-    window.downloadPDF = downloadPDF;
 
-    // Load geometry helper
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/three@0.128.0/examples/js/utils/BufferGeometryUtils.js';
-    script.onload = () => { THREE.BufferGeometryUtils = window.BufferGeometryUtils; };
-    document.head.appendChild(script);
-
+    // Handle Window Resize for 3D
+    window.addEventListener('resize', () => {
+      if (is3DReady) {
+        const container = document.getElementById('canvas-container');
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      }
+    });
   </script>
-
-  <!-- --- Scroll Target --- -->
-  <div id="results-scroll-target" style="height: 1px;"></div>
-
 </body>
 </html>
