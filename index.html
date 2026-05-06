@@ -1,469 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spur Gear Calculation Suite</title>
-    <!-- Three.js for 3D Rendering -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- jsPDF for PDF Download -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
-    <style>
-        :root {
-            --primary: #2c3e50; /* Slate Blue */
-            --accent: #34495e;
-            --bg: #f4f6f7;
-            --card-bg: #ffffff;
-            --text-main: #2c3e50;
-            --text-muted: #7f8c8d;
-            --border: #bdc3c7;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text-main);
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .main-container {
-            background-color: var(--card-bg);
-            max-width: 1200px;
-            width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            border: 1px solid var(--border);
-            padding: 40px;
-            box-sizing: border-box;
-        }
-
-        .header {
-            text-align: center;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-weight: 300;
-            letter-spacing: 1px;
-            color: var(--primary);
-        }
-
-        .header p {
-            color: var(--text-muted);
-            margin-top: 5px;
-        }
-
-        /* Grid Layout for Form and 3D View */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }
-
-        @media (max-width: 800px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Form Styles */
-        .form-section {
-            background: #fdfdfd;
-            padding: 25px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-        }
-
-        .form-section h3 {
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            color: var(--primary);
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        .input-group label {
-            display: block;
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-            color: var(--primary);
-        }
-
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-size: 1rem;
-            box-sizing: border-box;
-            background-color: #fff;
-        }
-
-        .input-group input:focus, .input-group select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* 3D Canvas Styles */
-        .canvas-section {
-            display: flex;
-            flex-direction: column;
-        }
-
-        #canvas-container {
-            width: 100%;
-            height: 350px;
-            background-color: #eef2f5;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Results Styles */
-        .results-section {
-            margin-top: 40px;
-            background: #fdfdfd;
-            padding: 25px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .result-item {
-            background: #fff;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-left: 4px solid var(--primary);
-            border-radius: 4px;
-        }
-
-        .result-item span {
-            display: block;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .result-item strong {
-            font-size: 1.2rem;
-            color: var(--primary);
-        }
-
-        /* Buttons */
-        .action-bar {
-            margin-top: 30px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 15px;
-            border-top: 1px solid var(--border);
-            padding-top: 20px;
-        }
-
-        .btn {
-            background: var(--primary);
-            color: white;
-            padding: 10px 24px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.2s;
-            font-size: 0.95rem;
-        }
-
-        .btn:hover {
-            background: var(--accent);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--primary);
-            border: 1px solid var(--primary);
-        }
-
-        .btn-outline:hover {
-            background: rgba(44, 62, 80, 0.05);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Spur Gear Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      color: #2c3e50;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 80%;
+      margin: auto;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover { background: #2980b9; }
+    .hidden { display: none; }
+    #gearCanvas { width: 600px; height: 400px; margin: auto; }
+    .calc-section { text-align: left; margin-top: 20px; }
+  </style>
 </head>
 <body>
+<div class="container">
 
-    <div class="main-container">
-        <!-- Header -->
-        <div class="header">
-            <h1>SPUR GEAR CALCULATION</h1>
-            <p>Standard Design Configuration & 3D Visualization</p>
-        </div>
+  <!-- Page 1 -->
+  <div id="page1">
+    <h1>SPUR GEAR CALCULATION</h1>
+    <button onclick="goToPage(2)">Next</button>
+  </div>
 
-        <!-- Main Content -->
-        <div class="content-grid">
-            
-            <!-- Left Side: Inputs -->
-            <div class="form-section">
-                <h3>Design Parameters</h3>
-                
-                <div class="input-group">
-                    <label>Calculation Type</label>
-                    <select id="calcType">
-                        <option>Standard Design (Power & Torque)</option>
-                        <option>Geometric Optimization</option>
-                    </select>
-                </div>
+  <!-- Page 2 -->
+  <div id="page2" class="hidden">
+    <h2>Select Question Type</h2>
+    <button onclick="goToPage(3)">Type 1</button>
+    <button onclick="alert('Type 2 flow not implemented yet')">Type 2</button>
+    <button onclick="alert('Type 3 flow not implemented yet')">Type 3</button>
+    <button onclick="goToPage(1)">Back</button>
+  </div>
 
-                <div class="input-group">
-                    <label>Material Selection</label>
-                    <select id="material" onchange="updateCalculations()">
-                        <option>Steel (16MnCr5)</option>
-                        <option>Cast Iron</option>
-                        <option>Nylon</option>
-                    </select>
-                </div>
+  <!-- Page 3 (Type 1) -->
+  <div id="page3" class="hidden">
+    <h2>Type 1 Calculation</h2>
+    <label>Material:
+      <select id="material">
+        <option>Steel</option>
+        <option>Aluminum</option>
+        <option>Plastic</option>
+      </select>
+    </label><br><br>
+    <label>Number of Teeth:
+      <input type="number" id="teeth" value="50">
+    </label><br><br>
+    <button onclick="generateGear()">Calculate</button>
 
-                <div class="input-group">
-                    <label>Number of Teeth (Z)</label>
-                    <input type="number" id="teeth" value="30" min="10" max="150" oninput="updateGear()">
-                </div>
+    <div id="gearCanvas"></div>
 
-                <div class="input-group">
-                    <label>Module (m) in mm</label>
-                    <input type="number" id="module" value="2.5" step="0.5" min="0.5" max="20" oninput="updateGear()">
-                </div>
-            </div>
+    <div class="calc-section" id="calcDetails"></div>
 
-            <!-- Right Side: 3D Visualization -->
-            <div class="canvas-section">
-                <div id="canvas-container"></div>
-                <p style="text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
-                    Interactive 3D Preview (Parallel Rotation)
-                </p>
-            </div>
-        </div>
+    <button onclick="goToPage(2)">Back</button>
+    <button onclick="downloadPDF()">Download PDF</button>
+    <button onclick="window.print()">Print</button>
+  </div>
 
-        <!-- Bottom: Detailed Calculation Results -->
-        <div class="results-section">
-            <h3 style="margin-top: 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                Detailed Engineering Results
-            </h3>
-            <div class="results-grid" id="calc-output">
-                <!-- Results injected via JavaScript -->
-            </div>
-        </div>
+</div>
 
-        <!-- Action Bar -->
-        <div class="action-bar">
-            <button class="btn btn-outline" onclick="window.print()">Print Report</button>
-            <button class="btn" onclick="generatePDF()">Download PDF</button>
-        </div>
-    </div>
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <!-- Application Logic -->
-    <script>
-        // --- 3D Gear Generation (Three.js) ---
-        let scene, camera, renderer, gearMesh;
+<script>
+function goToPage(n) {
+  document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+  document.getElementById('page'+n).classList.remove('hidden');
+}
 
-        function init3D() {
-            const container = document.getElementById('canvas-container');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xeef2f5); // Matches container background
-            
-            // Setup Camera
-            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 60;
+function generateGear() {
+  const teeth = parseInt(document.getElementById("teeth").value);
+  const material = document.getElementById("material").value;
 
-            // Setup Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(renderer.domElement);
+  // Clear old canvas
+  document.getElementById("gearCanvas").innerHTML = "";
 
-            // Lighting setup for official aesthetic
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(10, 20, 30);
-            scene.add(dirLight);
-            
-            const ambientLight = new THREE.AmbientLight(0x7f8c8d, 0.6);
-            scene.add(ambientLight);
+  // Setup Three.js
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 600/400, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(600, 400);
+  document.getElementById("gearCanvas").appendChild(renderer.domElement);
 
-            // Start animation loop
-            animate();
-            
-            // Initial drawing
-            updateGear();
-        }
+  // Gear geometry (simplified circle with teeth segments)
+  const geometry = new THREE.CircleGeometry(5, teeth);
+  const materialMesh = new THREE.MeshBasicMaterial({ color: 0x3498db, wireframe: true });
+  const gear = new THREE.Mesh(geometry, materialMesh);
+  scene.add(gear);
 
-        function updateGear() {
-            if (gearMesh) scene.remove(gearMesh);
-            
-            // Get inputs
-            const teeth = parseInt(document.getElementById('teeth').value) || 20;
-            const module = parseFloat(document.getElementById('module').value) || 2;
-            const radius = (teeth * module) / 2;
-            
-            // Adjust camera position based on gear size to keep it in frame
-            camera.position.z = radius * 2.5 + 20;
+  camera.position.z = 10;
 
-            // Create procedural 2D shape of a gear
-            const shape = new THREE.Shape();
-            const points = teeth * 2;
-            const toothDepth = 2.25 * module; // Approximate depth based on standard
-            
-            for (let i = 0; i <= points; i++) {
-                const angle = (i / points) * Math.PI * 2;
-                // Alternate between outer radius (addendum) and inner radius (dedendum)
-                const r = i % 2 === 0 ? radius + module : radius - (1.25 * module);
-                const x = Math.cos(angle) * r;
-                const y = Math.sin(angle) * r;
-                
-                if (i === 0) shape.moveTo(x, y);
-                else shape.lineTo(x, y);
-            }
+  function animate() {
+    requestAnimationFrame(animate);
+    gear.rotation.z += 0.01;
+    renderer.render(scene, camera);
+  }
+  animate();
 
-            // Extrude shape into 3D
-            const extrudeSettings = { 
-                depth: module * 5, // Face width proportional to module
-                bevelEnabled: true,
-                bevelThickness: 0.5,
-                bevelSize: 0.2,
-                bevelSegments: 2
-            };
-            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-            
-            // Center the geometry
-            geometry.computeBoundingBox();
-            const zOffset = -0.5 * (geometry.boundingBox.max.z - geometry.boundingBox.min.z);
-            geometry.translate(0, 0, zOffset);
+  // Show calculation details
+  const details = `
+    <h3>Detailed Calculation</h3>
+    <p>Material Selected: ${material}</p>
+    <p>Number of Teeth: ${teeth}</p>
+    <p>Pitch Circle Diameter ≈ ${teeth * 2} mm (example)</p>
+    <p>Module ≈ ${(teeth * 2 / teeth).toFixed(2)} mm</p>
+    <p>Pressure Angle: 20° (standard)</p>
+  `;
+  document.getElementById("calcDetails").innerHTML = details;
+}
 
-            // Material styling (Steel-like appearance)
-            const material = new THREE.MeshPhongMaterial({ 
-                color: 0x95a5a6,
-                shininess: 80,
-                specular: 0xffffff
-            });
-            
-            gearMesh = new THREE.Mesh(geometry, material);
-            
-            // Tilt slightly to show depth, then rotate on Z axis
-            gearMesh.rotation.x = 0.3; 
-            gearMesh.rotation.y = 0.3;
-
-            scene.add(gearMesh);
-
-            // Update Text Calculations
-            updateCalculations(teeth, module);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if (gearMesh) {
-                gearMesh.rotation.z += 0.005; // Parallel rotation effect
-            }
-            renderer.render(scene, camera);
-        }
-
-        // --- Engineering Calculations ---
-        function updateCalculations(teeth, module) {
-            if(!teeth) teeth = parseInt(document.getElementById('teeth').value) || 20;
-            if(!module) module = parseFloat(document.getElementById('module').value) || 2;
-            
-            const material = document.getElementById('material').value;
-            const pitchDia = (teeth * module).toFixed(2);
-            const outsideDia = (pitchDia * 1 + 2 * module).toFixed(2);
-            const rootDia = (pitchDia - 2 * (1.25 * module)).toFixed(2);
-            const circularPitch = (Math.PI * module).toFixed(3);
-            const baseCircleDia = (pitchDia * Math.cos(20 * Math.PI / 180)).toFixed(2); // Assuming 20deg pressure angle
-
-            document.getElementById('calc-output').innerHTML = `
-                <div class="result-item"><span>Material</span><strong>${material}</strong></div>
-                <div class="result-item"><span>Pitch Circle Dia (d)</span><strong>${pitchDia} mm</strong></div>
-                <div class="result-item"><span>Outside Dia (da)</span><strong>${outsideDia} mm</strong></div>
-                <div class="result-item"><span>Root Dia (df)</span><strong>${rootDia} mm</strong></div>
-                <div class="result-item"><span>Base Circle Dia (db)</span><strong>${baseCircleDia} mm</strong></div>
-                <div class="result-item"><span>Circular Pitch (p)</span><strong>${circularPitch} mm</strong></div>
-                <div class="result-item"><span>Addendum (ha)</span><strong>${module.toFixed(2)} mm</strong></div>
-                <div class="result-item"><span>Dedendum (hf)</span><strong>${(1.25 * module).toFixed(2)} mm</strong></div>
-            `;
-        }
-
-        // --- PDF Generation ---
-        function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(20);
-            doc.setTextColor(44, 62, 80);
-            doc.text("Spur Gear Calculation Report", 20, 20);
-            
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text("Generated by GearCalc Pro", 20, 28);
-            
-            doc.line(20, 32, 190, 32);
-
-            // Fetch data
-            const teeth = document.getElementById('teeth').value;
-            const module = document.getElementById('module').value;
-            const material = document.getElementById('material').value;
-
-            const pitchDia = (teeth * module).toFixed(2);
-            const outsideDia = (pitchDia * 1 + 2 * module).toFixed(2);
-            const circularPitch = (Math.PI * module).toFixed(3);
-
-            let yPos = 45;
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "bold");
-            doc.text("Input Parameters:", 20, yPos);
-            doc.setFont("helvetica", "normal");
-            yPos += 10; doc.text(`Material: ${material}`, 25, yPos);
-            yPos += 10; doc.text(`Number of Teeth (Z): ${teeth}`, 25, yPos);
-            yPos += 10; doc.text(`Module (m): ${module} mm`, 25, yPos);
-
-            yPos += 20;
-            doc.setFont("helvetica", "bold");
-            doc.text("Calculated Results:", 20, yPos);
-            doc.setFont("helvetica", "normal");
-            yPos += 10; doc.text(`Pitch Circle Diameter: ${pitchDia} mm`, 25, yPos);
-            yPos += 10; doc.text(`Outside Diameter: ${outsideDia} mm`, 25, yPos);
-            yPos += 10; doc.text(`Circular Pitch: ${circularPitch} mm`, 25, yPos);
-            yPos += 10; doc.text(`Addendum: ${parseFloat(module).toFixed(2)} mm`, 25, yPos);
-            yPos += 10; doc.text(`Dedendum: ${(1.25 * module).toFixed(2)} mm`, 25, yPos);
-
-            doc.save("Spur_Gear_Report.pdf");
-        }
-
-        // Initialize application on load
-        window.onload = () => {
-            init3D();
-            
-            // Handle window resize for 3D canvas
-            window.addEventListener('resize', () => {
-                const container = document.getElementById('canvas-container');
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            });
-        };
-    </script>
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text("Spur Gear Calculation Results", 10, 10);
+  doc.text(document.getElementById("calcDetails").innerText, 10, 20);
+  doc.save("gear_calculation.pdf");
+}
+</script>
 </body>
 </html>
