@@ -690,3 +690,33 @@
     </script>
 </body>
 </html>
+# Gear material safety check
+
+def gear_material_status(FS, FD):
+    # FS = Metal Breaking Limit (N)
+    # FD = Dynamic Shock Speed Load (N)
+    
+    if FS > FD:
+        status = "SAFE"
+        solution = "Material is safe under current load conditions."
+    else:
+        status = "FAIL"
+        solution = (
+            "Material will break under current load.\n"
+            "Suggested solutions:\n"
+            "- Increase gear face width or module size.\n"
+            "- Use stronger material with higher tensile strength.\n"
+            "- Reduce transmitted power or speed.\n"
+            "- Improve lubrication to lower dynamic shock load."
+        )
+    
+    return status, solution
+
+
+# Example usage:
+FS = 7153.58   # Metal Breaking Limit (N)
+FD = 12195.96  # Dynamic Shock Speed Load (N)
+
+status, solution = gear_material_status(FS, FD)
+print(f"Status: {status}")
+print(f"Solution: {solution}")
