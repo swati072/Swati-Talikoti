@@ -690,33 +690,38 @@
     </script>
 </body>
 </html>
-# Gear material safety check
+// Gear material safety verification and solution generator
 
-def gear_material_status(FS, FD):
-    # FS = Metal Breaking Limit (N)
-    # FD = Dynamic Shock Speed Load (N)
-    
-    if FS > FD:
-        status = "SAFE"
-        solution = "Material is safe under current load conditions."
-    else:
-        status = "FAIL"
-        solution = (
-            "Material will break under current load.\n"
-            "Suggested solutions:\n"
-            "- Increase gear face width or module size.\n"
-            "- Use stronger material with higher tensile strength.\n"
-            "- Reduce transmitted power or speed.\n"
-            "- Improve lubrication to lower dynamic shock load."
-        )
-    
-    return status, solution
+function securityVerification(FS, FD, bendingStress) {
+  // FS = Metal Breaking Limit (N)
+  // FD = Dynamic Shock Speed Load (N)
+  // bendingStress = Calculated bending stress (MPa)
 
+  let status, solution;
 
-# Example usage:
-FS = 7153.58   # Metal Breaking Limit (N)
-FD = 12195.96  # Dynamic Shock Speed Load (N)
+  if (FS > FD) {
+    status = "SAFE";
+    solution = "Material is safe under current load and stress conditions.";
+  } else {
+    status = "FAIL";
+    solution =
+      "⚠️ Material will break under current load.\n" +
+      "Recommended engineering solutions:\n" +
+      "1. Increase gear face width or module size to raise strength limit.\n" +
+      "2. Select a material with higher tensile or yield strength.\n" +
+      "3. Reduce transmitted power or rotational speed to lower dynamic load.\n" +
+      "4. Optimize lubrication and surface finish to minimize shock impact.\n" +
+      "5. Re‑evaluate bending stress (" + bendingStress + " MPa) and ensure it stays below the material’s endurance limit.";
+  }
 
-status, solution = gear_material_status(FS, FD)
-print(f"Status: {status}")
-print(f"Solution: {solution}")
+  return { status, solution };
+}
+
+// Example usage:
+const FS = 7153.58;   // Metal Breaking Limit (N)
+const FD = 12195.96;  // Dynamic Shock Speed Load (N)
+const bendingStress = 611.7; // MPa
+
+const result = securityVerification(FS, FD, bendingStress);
+console.log("Status:", result.status);
+console.log("Solution:\n" + result.solution);
