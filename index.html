@@ -1,727 +1,697 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpurGear Pro | Industrial Gearbox Design Suite</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f1f5f9; margin: 0; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        input, select { background: #1e293b !important; border: 1px solid #475569 !important; color: #f8fafc !important; padding: 0.4rem; font-size: 0.75rem; border-radius: 6px; width: 100%; transition: border-color 0.2s; }
-        input:focus, select:focus { border-color: #3b82f6 !important; outline: none; }
-        #splash-screen { position: fixed; inset: 0; background: #090d16; z-index: 100; display: flex; align-items: center; justify-content: center; }
-        .option-card { background: #1e293b; padding: 2.5rem 2rem; border-radius: 12px; width: 320px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3); }
-        .option-card:hover { transform: translateY(-4px); border-color: #3b82f6; background: #243249; }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .calc-card { animation: slideIn 0.3s ease-out forwards; }
-        #anim-toggle { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; }
-        
-        .fea-legend { position: absolute; bottom: 30px; right: 540px; width: 180px; background: rgba(30, 41, 59, 0.9); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 10px; box-shadow: 0 4px 6px rgb(0 0 0 / 0.3); z-index: 40; }
-        .gradient-bar { height: 10px; width: 100%; background: linear-gradient(to right, #1e40af, #f59e0b, #ef4444); border-radius: 2px; margin: 6px 0; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-    </style>
-</head>
-<body>
-
-    <div id="splash-screen">
-        <div class="max-w-5xl w-full px-8 text-center">
-            <h2 class="text-white text-4xl font-bold mb-2 tracking-tight">SpurGear Pro</h2>
-            <p class="text-slate-400 text-sm mb-12">Mathematical & Transparent Contact Stress Solver</p>
-            <div class="flex flex-wrap justify-center gap-6">
-                <div class="option-card text-left" onclick="launchEngine('single')">
-                    <span class="text-[10px] bg-blue-500/10 text-blue-400 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Standard</span>
-                    <h3 class="font-bold text-white text-lg mt-2">Single Stage Mesh</h3>
-                    <p class="text-xs text-slate-400 mt-1">Standard 2-gear reduction mesh with localized profile contact FEA.</p>
-                </div>
-                <div class="option-card text-left" onclick="launchEngine('double')">
-                    <span class="text-[10px] bg-purple-500/10 text-purple-400 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Extended</span>
-                    <h3 class="font-bold text-white text-lg mt-2">Double Stage</h3>
-                    <p class="text-xs text-slate-400 mt-1">Multi-stage reduction layout featuring decoupled intermediate lines.</p>
-                </div>
-                <div class="option-card text-left" onclick="launchEngine('compound')">
-                    <span class="text-[10px] bg-amber-500/10 text-amber-400 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Advanced</span>
-                    <h3 class="font-bold text-white text-lg mt-2">Compound Train</h3>
-                    <p class="text-xs text-slate-400 mt-1">Coaxial structural alignment pairing two independent meshes together.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="main-engine" class="min-h-screen flex flex-col hidden">
-        <header class="h-14 glass flex items-center justify-between px-8 border-b border-slate-800 sticky top-0 z-20">
-            <div class="flex items-center gap-4">
-                <button onclick="location.reload()" class="text-[10px] font-bold tracking-wider bg-slate-800 border border-slate-700 text-slate-300 px-3 py-1.5 rounded transition hover:bg-slate-700">← MAIN MENU</button>
-                <div class="h-4 w-[1px] bg-slate-700"></div>
-                <h1 class="text-xs font-bold tracking-widest uppercase text-slate-200">SpurGear Pro // <span id="mode-label" class="text-blue-400">--</span></h1>
-            </div>
-            <button onclick="generatePDF()" class="bg-blue-600 text-white text-[10px] px-5 py-2 rounded-md font-bold tracking-wider hover:bg-blue-500 shadow-sm transition">
-                EXPORT SYSTEM REPORT WITH 2D SKETCH (PDF)
-            </button>
-        </header>
-
-        <div class="flex-1 flex flex-col lg:flex-row overflow-visible relative">
-            <div id="anim-toggle">
-                <button id="toggleBtn" onclick="toggleAnimation()" class="bg-slate-800 text-slate-200 border border-slate-700 text-[10px] tracking-wider px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-600 hover:text-white transition-all">
-                    DRIVE MOTOR: ENGAGED
-                </button>
-            </div>
-
-            <div class="fea-legend mono text-slate-300">
-                <div class="font-bold text-white mb-0.5">Active Mesh Tooth FEA</div>
-                <div class="gradient-bar"></div>
-                <div class="flex justify-between text-[8px] text-slate-400 font-bold">
-                    <span>Base Body Color</span>
-                    <span id="max-stress-label">Max Stress</span>
-                </div>
-                <div class="mt-2 pt-1.5 border-t border-slate-800 text-[8px] text-slate-500">Casing: Clear Acrylic</div>
-            </div>
-
-            <!-- Parameters Sidebar (Left) -->
-            <aside class="w-full lg:w-80 glass border-b lg:border-b-0 lg:border-r border-slate-800 p-5 space-y-4 h-auto lg:h-[calc(100vh-3.5rem)] lg:sticky lg:top-14 overflow-y-auto z-10 shadow-sm">
-                <h2 class="text-[10px] font-bold text-blue-400 uppercase tracking-widest border-b border-slate-800 pb-2">Design Constraints</h2>
-                
-                <section>
-                    <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Material Stress Limit</label>
-                    <select id="material-stress" class="mt-1" onchange="updateDesign()">
-                        <option value="47.1">Cast Iron Grade 20 (47.1 MPa)</option>
-                        <option value="78.5">Cast Iron Grade 35 (78.5 MPa)</option>
-                        <option value="138.3">Cast Steel (138.3 MPa)</option>
-                        <option value="233.4" selected>Steel C45 (233.4 MPa)</option>
-                        <option value="345.2">Alloy Steel (345.2 MPa)</option>
-                    </select>
-                </section>
-
-                <section>
-                    <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Contact Materials</label>
-                    <select id="mat-pair" class="mt-1" onchange="updateDesign()">
-                        <option value="ST_ST" selected>Steel & Steel</option>
-                        <option value="CI_CI">Cast Iron & Cast Iron</option>
-                        <option value="CI_ST">Cast Iron & Steel</option>
-                    </select>
-                </section>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Load Type</label>
-                        <select id="load-type" class="mt-1" onchange="updateDesign()">
-                            <option value="steady">Uniform/Steady</option>
-                            <option value="medium" selected>Medium Shock</option>
-                            <option value="heavy">Heavy Shock</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Duty Cycle</label>
-                        <select id="service-type" class="mt-1" onchange="updateDesign()">
-                            <option value="intermittent">Intermittent (3h)</option>
-                            <option value="standard" selected>Standard (10h)</option>
-                            <option value="continuous">Continuous (24h)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Tooth Angle Profile</label>
-                        <select id="tooth-system" class="mt-1" onchange="updateDesign()">
-                            <option value="14.5">14.5° Involute</option>
-                            <option value="20" selected>20° Full Depth</option>
-                            <option value="20stub">20° Stub Profile</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Manufacturing Error</label>
-                        <select id="gear-error" class="mt-1" onchange="updateDesign()">
-                            <option value="0.01">Class I (0.01 mm)</option>
-                            <option value="0.03" selected>Class II (0.03 mm)</option>
-                            <option value="0.06">Class III (0.06 mm)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <section>
-                    <label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Module size (m)</label>
-                    <select id="module-sel" class="mt-1" onchange="updateDesign()">
-                        <option value="1">1.0 mm</option><option value="2">2.0 mm</option>
-                        <option value="3" selected>3.0 mm</option><option value="4">4.0 mm</option>
-                        <option value="5">5.0 mm</option><option value="6">6.0 mm</option><option value="8">8.0 mm</option>
-                    </select>
-                </section>
-
-                <div class="grid grid-cols-2 gap-3 border-t pt-3 border-slate-800">
-                    <div><label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Power (kW)</label><input type="number" id="in-p" value="15" class="mt-1" oninput="updateDesign()"></div>
-                    <div><label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Speed (RPM)</label><input type="number" id="in-n" value="1200" class="mt-1" oninput="updateDesign()"></div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 border-t pt-3 border-slate-800">
-                    <div><label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Pinion Teeth (Z1)</label><input type="number" id="z1" value="20" class="mt-1" oninput="updateDesign()"></div>
-                    <div><label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Gear Teeth (Z2)</label><input type="number" id="z2" value="50" class="mt-1" oninput="updateDesign()"></div>
-                </div>
-
-                <div id="multi-stage-inputs" class="hidden grid grid-cols-2 gap-3 border-t pt-3 border-slate-800">
-                    <div><label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Z3 (Stage 2 Pinion)</label><input type="number" id="z3" value="18" class="mt-1" oninput="updateDesign()"></div>
-                    <div><label class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Z4 (Stage 2 Gear)</label><input type="number" id="z4" value="45" class="mt-1" oninput="updateDesign()"></div>
-                </div>
-            </aside>
-
-            <!-- 3D Render Area -->
-            <main class="flex-1 min-h-[450px] lg:h-[calc(100vh-3.5rem)] bg-[#1e293b] relative">
-                <div id="render-area" class="w-full h-full"></div>
-            </main>
-
-            <!-- Analytics Output Panel (Right) -->
-            <aside id="data-panel" class="w-full lg:w-[540px] glass border-t lg:border-t-0 lg:border-l border-slate-800 p-5 h-auto lg:h-[calc(100vh-3.5rem)] lg:sticky lg:top-14 flex flex-col overflow-hidden shadow-sm">
-                <h2 class="text-[10px] font-bold text-blue-400 uppercase tracking-widest border-b border-slate-800 pb-2 flex-shrink-0">
-                    Step-by-Step Simple Math Breakdown
-                </h2>
-                <!-- Calculation Stream -->
-                <div id="step-output" class="text-[11px] mono space-y-4 mt-3 overflow-y-auto flex-1 pr-1"></div>
-            </aside>
-        </div>
-    </div>
-
-    <script>
-        let scene, camera, renderer, controls, gearGroup, engineMode, transparentCasing;
-        let activeGears = []; 
-        let isAnimating = true;
-
-        const structuralPalette = {
-            pinion: 0x1e40af,    
-            driven: 0x065f46,    
-            inter: 0xb45309,     
-            output: 0x6d28d9     
-        };
-
-        const serviceFactorTable = {
-            steady: { intermittent: 0.8, standard: 1.0, continuous: 1.25 },
-            medium: { intermittent: 1.2, standard: 1.5, continuous: 1.8 },
-            heavy: { intermittent: 1.5, standard: 1.8, continuous: 2.0 }
-        };
-
-        const dynamicFactorC = {
-            "14.5": { "ST_ST": { "0.01": 110, "0.03": 330, "0.06": 660 }, "CI_CI": { "0.01": 55, "0.03": 165, "0.06": 331 } },
-            "20": { "ST_ST": { "0.01": 114, "0.03": 343, "0.06": 686 }, "CI_CI": { "0.01": 57, "0.03": 171, "0.06": 343 } },
-            "20stub": { "ST_ST": { "0.01": 118, "0.03": 356, "0.06": 712 }, "CI_CI": { "0.01": 59, "0.03": 178, "0.06": 356 } }
-        };
-
-        dynamicFactorC["14.5"]["CI_ST"] = dynamicFactorC["14.5"]["CI_CI"];
-        dynamicFactorC["20"]["CI_ST"] = dynamicFactorC["20"]["CI_CI"];
-        dynamicFactorC["20stub"]["CI_ST"] = dynamicFactorC["20stub"]["CI_CI"];
-
-        function toggleAnimation() {
-            isAnimating = !isAnimating;
-            const btn = document.getElementById('toggleBtn');
-            btn.innerText = isAnimating ? "DRIVE MOTOR: ENGAGED" : "DRIVE MOTOR: STOPPED";
-            btn.classList.toggle('border-slate-700');
-            btn.classList.toggle('border-red-500');
-            btn.classList.toggle('text-red-400');
-        }
-
-        function launchEngine(mode) {
-            engineMode = mode;
-            document.getElementById('splash-screen').style.display = 'none';
-            document.getElementById('main-engine').classList.remove('hidden');
-            document.getElementById('mode-label').innerText = mode.toUpperCase() + " CONFIGURATION";
-            if(mode !== 'single') document.getElementById('multi-stage-inputs').classList.remove('hidden');
-            init();
-            updateDesign();
-        }
-
-        function init() {
-            const area = document.getElementById('render-area');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a); 
-            
-            camera = new THREE.PerspectiveCamera(38, area.clientWidth / area.clientHeight, 1, 2000);
-            camera.position.set(0, 160, 150);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-            renderer.setSize(area.clientWidth, area.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            area.appendChild(renderer.domElement);
-            
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-
-            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            mainLight.position.set(50, 200, 50);
-            scene.add(mainLight);
-
-            gearGroup = new THREE.Group();
-            scene.add(gearGroup);
-            
-            window.addEventListener('resize', onWindowResize);
-            animate();
-        }
-
-        function onWindowResize() {
-            const area = document.getElementById('render-area');
-            camera.aspect = area.clientWidth / area.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(area.clientWidth, area.clientHeight);
-        }
-
-        function createGearMesh(z, m, x, baseBodyColor, yOffset = 0, zOffset = 0, speedFactor = 1, initialOffset = 0, targetMeshX = null) {
-            const r_pitch = (z * m) / 2;
-            const r_dedendum = r_pitch - 1.25 * m;
-            const thickness = 10 * m; 
-            const gearContainer = new THREE.Group(); 
-            
-            const bodyShape = new THREE.Shape();
-            bodyShape.absarc(0, 0, r_dedendum, 0, Math.PI * 2, false);
-            const centerHole = new THREE.Path();
-            centerHole.absarc(0, 0, m * 2.5, 0, Math.PI * 2, true);
-            bodyShape.holes.push(centerHole);
-
-            if (z > 20) {
-                const numHoles = 4;
-                const dist = r_dedendum * 0.55;
-                const holeRad = r_dedendum * 0.18;
-                for(let i=0; i<numHoles; i++) {
-                    const angle = (i / numHoles) * Math.PI * 2;
-                    const hPath = new THREE.Path();
-                    hPath.absarc(Math.cos(angle)*dist, Math.sin(angle)*dist, holeRad, 0, Math.PI*2, true);
-                    bodyShape.holes.push(hPath);
-                }
-            }
-            
-            const bodyGeo = new THREE.ExtrudeGeometry(bodyShape, { depth: thickness, bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, segments: 64 });
-            const bodyMat = new THREE.MeshStandardMaterial({ color: baseBodyColor, metalness: 0.5, roughness: 0.4 });
-            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-            gearContainer.add(bodyMesh);
-
-            const toothWidthBottom = m * 1.571;
-            const toothWidthTop = m * 0.785;
-            const toothHeight = 2.25 * m;
-            const teethArray = [];
-
-            for (let i = 0; i < z; i++) {
-                const toothShape = new THREE.Shape();
-                toothShape.moveTo(-toothWidthBottom / 2, 0);
-                toothShape.lineTo(-toothWidthTop / 2, toothHeight);
-                toothShape.lineTo(toothWidthTop / 2, toothHeight);
-                toothShape.lineTo(toothWidthBottom / 2, 0);
-                
-                const toothGeo = new THREE.ExtrudeGeometry(toothShape, { depth: thickness, bevelEnabled: false });
-                
-                const colors = [];
-                const parsedBaseColor = new THREE.Color(baseBodyColor);
-                for(let c=0; c<toothGeo.attributes.position.count; c++) {
-                    colors.push(parsedBaseColor.r, parsedBaseColor.g, parsedBaseColor.b);
-                }
-                toothGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-                
-                const toothMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.3 });
-                const toothMesh = new THREE.Mesh(toothGeo, toothMat);
-                
-                const angle = (i / z) * Math.PI * 2;
-                toothMesh.position.x = Math.cos(angle) * r_dedendum;
-                toothMesh.position.y = Math.sin(angle) * r_dedendum;
-                toothMesh.rotation.z = angle - Math.PI / 2;
-                
-                bodyMesh.add(toothMesh);
-                teethArray.push({ mesh: toothMesh, geometry: toothGeo, baseAngle: angle });
-            }
-
-            gearContainer.position.set(x, yOffset, zOffset);
-            gearContainer.rotation.x = Math.PI / 2;
-            bodyMesh.rotation.z = initialOffset; 
-
-            activeGears.push({ 
-                obj: bodyMesh, 
-                speed: speedFactor, 
-                teeth: teethArray, 
-                globalX: x, 
-                globalZ: zOffset, 
-                targetMeshX: targetMeshX,
-                baseBodyColor: baseBodyColor
-            });
-
-            return gearContainer;
-        }
-
-        function rebuildTransparentCasing() {
-            if(transparentCasing) scene.remove(transparentCasing);
-
-            const bounds = new THREE.Box3().setFromObject(gearGroup);
-            const size = new THREE.Vector3();
-            const center = new THREE.Vector3();
-            bounds.getSize(size);
-            bounds.getCenter(center);
-
-            // Expand casing buffer parameters around components
-            const padX = size.x + 12;
-            const padY = size.y + 8;
-            const padZ = size.z + 12;
-
-            const boxGeo = new THREE.BoxGeometry(padX, padY, padZ);
-            const boxMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.12,
-                roughness: 0.1,
-                metalness: 0.1,
-                transmission: 0.6, 
-                ior: 1.45,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
-
-            transparentCasing = new THREE.Mesh(boxGeo, boxMat);
-            transparentCasing.position.copy(center);
-            
-            // Generate clear structural outer wireframe bounds
-            const wireframeGeo = new THREE.EdgesGeometry(boxGeo);
-            const wireframeMat = new THREE.LineBasicMaterial({ color: 0x475569, linewidth: 1 });
-            const wireframeLines = new THREE.LineSegments(wireframeGeo, wireframeMat);
-            transparentCasing.add(wireframeLines);
-
-            scene.add(transparentCasing);
-        }
-
-        function updateDesign() {
-            if(!gearGroup) return;
-            while(gearGroup.children.length > 0) gearGroup.remove(gearGroup.children[0]);
-            activeGears = [];
-            
-            const z1 = Math.max(1, parseInt(document.getElementById('z1').value) || 1);
-            const z2 = Math.max(1, parseInt(document.getElementById('z2').value) || 1);
-            const z3 = Math.max(1, parseInt(document.getElementById('z3').value) || 1);
-            const z4 = Math.max(1, parseInt(document.getElementById('z4').value) || 1);
-            const m = parseFloat(document.getElementById('module-sel').value);
-            const p = parseFloat(document.getElementById('in-p').value) || 0;
-            const n1 = parseFloat(document.getElementById('in-n').value) || 1;
-            const toothType = document.getElementById('tooth-system').value;
-            const errorVal = document.getElementById('gear-error').value;
-            const matPair = document.getElementById('mat-pair').value;
-            const sigma0 = parseFloat(document.getElementById('material-stress').value);
-            const cs = serviceFactorTable[document.getElementById('load-type').value][document.getElementById('service-type').value];
-            const C = dynamicFactorC[toothType][matPair][errorVal];
-
-            const d1 = z1 * m;
-            const d2 = z2 * m;
-            const b = 10 * m;
-            const gearRatio = z2 / z1;
-            
-            const speedStep1 = (3.1416 * d1 * n1).toFixed(2);
-            const v = parseFloat((speedStep1 / 60000).toFixed(3));
-            
-            const forceStep1 = 1000 * p;
-            const ft = parseFloat((forceStep1 / v).toFixed(2));
-            const ftEff = parseFloat((ft * cs).toFixed(2));
-            
-            const getY = (z) => (toothType === "20") ? 0.154 - (0.912/z) : (toothType === "20stub" ? 0.175 - (0.841/z) : 0.124 - (0.684/z));
-            const y1 = getY(z1), y2 = getY(z2);
-            const designY = (y1 <= y2) ? y1 : y2;
-
-            const strengthStep1 = (sigma0 * b).toFixed(2);
-            const strengthStep2 = (strengthStep1 * 3.1416).toFixed(2);
-            const strengthStep3 = (strengthStep2 * m).toFixed(2);
-            const fs = parseFloat((strengthStep3 * designY).toFixed(2));
-
-            const term1 = parseFloat((21 * v).toFixed(2));
-            const term2 = parseFloat(((b * C) + ftEff).toFixed(2));
-            const numFd = parseFloat((term1 * term2).toFixed(2));
-            const denFd = parseFloat((term1 + Math.sqrt(term2)).toFixed(2));
-            const fd = parseFloat((ftEff + (numFd / denFd)).toFixed(2));
-
-            const bendingStress = (b * m * designY > 0) ? (ftEff / (b * m * designY)) : 0;
-            document.getElementById('max-stress-label').innerText = bendingStress.toFixed(1) + " MPa";
-
-            const mesh1Center = (d1 + d2) / 2;
-            if(engineMode === 'single') {
-                gearGroup.add(createGearMesh(z1, m, 0, structuralPalette.pinion, 0, 0, 1, 0, mesh1Center));
-                gearGroup.add(createGearMesh(z2, m, mesh1Center, structuralPalette.driven, 0, 0, -1/gearRatio, Math.PI/z2, 0));
-            } else if (engineMode === 'double') {
-                const d3 = z3 * m, d4 = z4 * m;
-                const mesh2Center = mesh1Center + (d3 + d4) / 2;
-                gearGroup.add(createGearMesh(z1, m, 0, structuralPalette.pinion, 0, 0, 1, 0, mesh1Center));
-                gearGroup.add(createGearMesh(z2, m, mesh1Center, structuralPalette.driven, 0, 0, -1/gearRatio, Math.PI/z2, 0));
-                gearGroup.add(createGearMesh(z3, m, mesh1Center, structuralPalette.inter, 0, d2, -1/gearRatio, 0, mesh2Center));
-                gearGroup.add(createGearMesh(z4, m, mesh2Center, structuralPalette.output, 0, d2, (1/gearRatio)*(z3/z4), Math.PI/z4, mesh1Center));
-            } else if (engineMode === 'compound') {
-                const d3 = z3 * m, d4 = z4 * m;
-                gearGroup.add(createGearMesh(z1, m, 0, structuralPalette.pinion, 0, 0, 1, 0, mesh1Center));
-                gearGroup.add(createGearMesh(z2, m, mesh1Center, structuralPalette.driven, 0, 0, -1/gearRatio, Math.PI/z2, 0));
-                gearGroup.add(createGearMesh(z3, m, mesh1Center, structuralPalette.inter, b + 4, 0, -1/gearRatio, 0, mesh1Center + (d3+d4)/2)); 
-                gearGroup.add(createGearMesh(z4, m, mesh1Center + (d3 + d4)/2, structuralPalette.output, b + 4, 0, (1/gearRatio)*(z3/z4), Math.PI/z4, mesh1Center));
-            }
-
-            rebuildTransparentCasing();
-
-            const isSafe = fs > fd;
-            const safetyStatus = isSafe ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-400 bg-rose-500/10 border-rose-500/30';
-            
-            const output = document.getElementById('step-output');
-            output.innerHTML = `
-                <div class="calc-card p-3 bg-slate-800/60 border border-slate-700 rounded-md">
-                    <b class="text-blue-400 uppercase text-[9px] block mb-2">Gear Velocity</b>
-                    <div class="mt-1 font-bold text-slate-300 space-y-1">
-                        <div>1) Pinion Diameter = ${z1} × ${m} = ${d1} mm</div>
-                        <div>2) Velocity Equation = (3.1416 × ${d1} × ${n1}) ÷ 60000</div>
-                        <div>3) Velocity Step = ${speedStep1} ÷ 60000</div>
-                        <div>4) Final Velocity = <span class="text-blue-400">${v} m/s</span></div>
-                    </div>
-                </div>
-
-                <div class="calc-card p-3 bg-slate-800/60 border border-slate-700 rounded-md">
-                    <b class="text-blue-400 uppercase text-[9px] block mb-2">Force Pushing Teeth (Ft)</b>
-                    <div class="mt-1 font-bold text-slate-300 space-y-1">
-                        <div>1) Baseline Calculation = (1000 × ${p}) ÷ ${v}</div>
-                        <div>2) Baseline Calculation = ${forceStep1} ÷ ${v} = <span class="text-blue-400">${ft.toFixed(2)} N</span></div>
-                        <div>3) Shock Calculation = ${ft.toFixed(2)} × ${cs} (Service Factor)</div>
-                        <div>4) Final Effective Force = <span class="text-emerald-400">${ftEff.toFixed(2)} N</span></div>
-                    </div>
-                </div>
-
-                <div class="calc-card p-3 bg-slate-800/60 border border-slate-700 rounded-md">
-                    <b class="text-blue-400 uppercase text-[9px] block mb-2">Gear Tooth Size Factor (Y)</b>
-                    <div class="mt-1 font-bold text-slate-300 space-y-1">
-                        <div>1) Pinion Profile = 0.154 - (0.912 ÷ ${z1}) = ${y1.toFixed(4)}</div>
-                        <div>2) Driven Gear Profile = 0.154 - (0.912 ÷ ${z2}) = ${y2.toFixed(4)}</div>
-                        <div>3) Selected Smallest Profile = <span class="text-amber-400">${designY.toFixed(4)}</span></div>
-                    </div>
-                </div>
-
-                <div class="calc-card p-3 bg-slate-800/60 border border-slate-700 rounded-md">
-                    <b class="text-blue-400 uppercase text-[9px] block mb-2">Metal Breaking Limit (Fs)</b>
-                    <div class="mt-1 font-bold text-slate-300 space-y-1">
-                        <div>1) Width size = 10 × ${m} = ${b} mm</div>
-                        <div>2) Maximum Metal Limit = ${sigma0} × ${b} × 3.1416 × ${m} × ${designY.toFixed(4)}</div>
-                        <div>3) ${strengthStep1} × 3.1416 × ${m} × ${designY.toFixed(4)}</div>
-                        <div>4) ${strengthStep2} × ${m} × ${designY.toFixed(4)}</div>
-                        <div>5) ${strengthStep3} × ${designY.toFixed(4)}</div>
-                        <div>6) Final Strength Limit = <span class="text-blue-400">${fs.toFixed(2)} N</span></div>
-                    </div>
-                </div>
-
-                <div class="calc-card p-3 bg-slate-800/60 border border-slate-700 rounded-md">
-                    <b class="text-blue-400 uppercase text-[9px] block mb-2">Dynamic Shock Speed Load (Fd)</b>
-                    <div class="mt-1 font-bold text-slate-300 space-y-1 text-[10px]">
-                        <div>1) Velocity Part = 21 × ${v} = ${term1}</div>
-                        <div>2) Friction Part = (${b} × ${C}) + ${ftEff} = ${term2}</div>
-                        <div>3) Top Line = ${term1} × ${term2} = ${numFd}</div>
-                        <div>4) Bottom Line = ${term1} + √${term2} = ${denFd}</div>
-                        <div>5) Final Shock Speed Load = ${ftEff} + (${numFd} ÷ ${denFd}) = <span class="text-blue-400">${fd.toFixed(2)} N</span></div>
-                    </div>
-                </div>
-
-                <div class="calc-card p-3 border rounded-md ${safetyStatus}">
-                    <b class="uppercase text-[9px] block mb-1">Security Verification</b>
-                    <div>Bending Stress: <span class="font-bold">${bendingStress.toFixed(1)} MPa</span></div>
-                    <div>Is Metal Limit (${fs.toFixed(1)} N) > Actual Shock Load (${fd.toFixed(1)} N)?</div>
-                    <div class="mt-2 pt-1.5 border-t border-white/10 text-[10px] uppercase font-bold tracking-wider">
-                        STATUS: ${isSafe ? 'PASS // SAFE TO OPERATE' : 'FAIL // MATERIAL WILL BREAK'}
-                    </div>
-                </div>
-            `;
-        }
-
-        function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            
-            // Header Base
-            doc.setFillColor(15, 23, 42);
-            doc.rect(0, 0, 210, 32, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("Helvetica", "bold");
-            doc.setFontSize(14);
-            doc.text("SPURGEAR PRO // INDUSTRIAL SPECIFICATION SHEET", 14, 14);
-            doc.setFontSize(9);
-            doc.setFont("Helvetica", "normal");
-            doc.text(`Configuration Profile: ${engineMode.toUpperCase()} TRAIN SYSTEM`, 14, 22);
-
-            // Add Design Metrics Text
-            doc.setTextColor(15, 23, 42);
-            doc.setFontSize(11);
-            doc.setFont("Helvetica", "bold");
-            doc.text("1. Mechanical Configuration Variables", 14, 45);
-            
-            doc.setFont("Helvetica", "normal");
-            doc.setFontSize(9);
-            let yPos = 52;
-            
-            const inputs = ['z1', 'z2', 'module-sel', 'in-p', 'in-n'];
-            inputs.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) {
-                    doc.text(`${el.previousElementSibling?.innerText || id}: ${el.value}`, 20, yPos);
-                    yPos += 6;
-                }
-            });
-
-            // Section 2: Mathematical Analytical Stream
-            yPos += 6;
-            doc.setFont("Helvetica", "bold");
-            doc.setFontSize(11);
-            doc.text("2. Process Calculations & Verification Stream", 14, yPos);
-            yPos += 8;
-
-            doc.setFont("Courier", "bold");
-            doc.setFontSize(8);
-            const cards = document.querySelectorAll('#step-output .calc-card');
-            cards.forEach(card => {
-                const lines = card.innerText.split('\n');
-                lines.forEach(line => {
-                    if(yPos > 240) { doc.addPage(); yPos = 20; }
-                    doc.text(line, 16, yPos);
-                    yPos += 4.5;
-                });
-                yPos += 3;
-            });
-
-            // Capture 3D Render Canvas to inject as Vector Sketch layout 
-            try {
-                // Temporarily position camera overhead for a perfect clean orthographic alignment vector layout
-                const oldPos = camera.position.clone();
-                const oldTarget = controls.target.clone();
-                
-                // Hide transparent casing elements temporarily to retain zero noise blueprint data lines
-                if(transparentCasing) transparentCasing.visible = false;
-                
-                camera.position.set(0, 220, 0);
-                controls.target.set(0,0,0);
-                controls.update();
-                renderer.render(scene, camera);
-
-                const dataURL = renderer.domElement.toDataURL('image/png');
-                
-                // Reset positions right after image sequence captures
-                camera.position.copy(oldPos);
-                controls.target.copy(oldTarget);
-                controls.update();
-                if(transparentCasing) transparentCasing.visible = true;
-
-                doc.addPage();
-                doc.setFillColor(15, 23, 42);
-                doc.rect(0, 0, 210, 20, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFont("Helvetica", "bold");
-                doc.setFontSize(10);
-                doc.text("APPENDIX A: CAD PROJECTION SKETCH DIAGRAM", 14, 12);
-
-                // Insert into layout
-                doc.addImage(dataURL, 'PNG', 15, 30, 180, 120);
-                
-                doc.setTextColor(100, 116, 139);
-                doc.setFont("Helvetica", "normal");
-                doc.setFontSize(8);
-                doc.text("* Diagram displays 2D technical footprint with tooth profile contact positions projected onto the pitch diameters.", 14, 160);
-
-            } catch(e) {
-                console.error("Vector Capture failed", e);
-            }
-
-            doc.save(`SpurGearPro_Analytical_Report.pdf`);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            if(controls) controls.update();
-
-            if(isAnimating) {
-                const rpm = parseFloat(document.getElementById('in-n').value) || 0;
-                const step = (rpm * Math.PI) / 90000; 
-
-                activeGears.forEach(gear => {
-                    gear.obj.rotation.z += step * gear.speed;
-                    const currentRotation = gear.obj.rotation.z;
-                    
-                    gear.teeth.forEach(tooth => {
-                        const globalToothAngle = tooth.baseAngle + currentRotation;
-                        let isMeshing = false;
-                        
-                        if(gear.targetMeshX !== null) {
-                            const theoreticalMeshAngle = (gear.targetMeshX > gear.globalX) ? 0 : Math.PI;
-                            let angleDiff = Math.abs((globalToothAngle % (Math.PI * 2)) - theoreticalMeshAngle);
-                            if(angleDiff > Math.PI) angleDiff = (Math.PI * 2) - angleDiff;
-                            
-                            if (angleDiff < 0.25) {
-                                isMeshing = true;
-                            }
-                        }
-                        
-                        const colorAttr = tooth.geometry.attributes.color;
-                        const targetColor = new THREE.Color();
-                        
-                        if (isMeshing) {
-                            targetColor.setHex(0xef4444); 
-                        } else {
-                            targetColor.setHex(gear.baseBodyColor);
-                        }
-                        
-                        const rAttr = colorAttr.getX(0);
-                        const gAttr = colorAttr.getY(0);
-                        const bAttr = colorAttr.getZ(0);
-                        
-                        if (Math.abs(rAttr - targetColor.r) > 0.01 || 
-                            Math.abs(gAttr - targetColor.g) > 0.01 || 
-                            Math.abs(bAttr - targetColor.b) > 0.01) {
-                            
-                            for(let c=0; c<colorAttr.count; c++) {
-                                colorAttr.setXYZ(c, targetColor.r, targetColor.g, targetColor.b);
-                            }
-                            colorAttr.needsUpdate = true;
-                        }
-                    });
-                });
-            }
-            
-            if(renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-        }
-    </script>
-</body>
-</html>
-// Gear material safety verification and solution generator
-
-function securityVerification(FS, FD, bendingStress) {
-  // FS = Metal Breaking Limit (N)
-  // FD = Dynamic Shock Speed Load (N)
-  // bendingStress = Calculated bending stress (MPa)
-
-  let status, solution;
-
-  if (FS > FD) {
-    status = "SAFE";
-    solution = "Material is safe under current load and stress conditions.";
-  } else {
-    status = "FAIL";
-    solution =
-      "⚠️ Material will break under current load.\n" +
-      "Recommended engineering solutions:\n" +
-      "1. Increase gear face width or module size to raise strength limit.\n" +
-      "2. Select a material with higher tensile or yield strength.\n" +
-      "3. Reduce transmitted power or rotational speed to lower dynamic load.\n" +
-      "4. Optimize lubrication and surface finish to minimize shock impact.\n" +
-      "5. Re‑evaluate bending stress (" + bendingStress + " MPa) and ensure it stays below the material’s endurance limit.";
-  }
-
-  return { status, solution };
+import React from 'react';
+import { GearInputs, GearResults } from '../types/gear';
+import { motion } from 'motion/react';
+import { 
+  Calculator, 
+  Box, 
+  CircleDot, 
+  Activity, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Info,
+  Download,
+  Table as TableIcon,
+  ExternalLink,
+  BookOpen,
+  TrendingUp,
+  ShieldAlert,
+  Layers,
+  Zap
+} from 'lucide-react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Viewers
+import TwoDViewer from './TwoDViewer';
+import ThreeDViewer from './ThreeDViewer';
+
+interface Props {
+  inputs: GearInputs;
+  results: GearResults | null;
+  onBackToSelection?: () => void;
+  onBackToLanding?: () => void;
 }
 
-// Example usage:
-const FS = 7153.58;   // Metal Breaking Limit (N)
-const FD = 12195.96;  // Dynamic Shock Speed Load (N)
-const bendingStress = 611.7; // MPa
+export default function DashboardView({ inputs, results, onBackToSelection, onBackToLanding }: Props) {
+  if (!results) return null;
 
-const result = securityVerification(FS, FD, bendingStress);
-console.log("Status:", result.status);
-console.log("Solution:\n" + result.solution);
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Intelligent Gear Design Report', 20, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 30);
+    doc.text(`Gear Type: ${inputs.type.toUpperCase()}`, 20, 35);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Input Parameter', 'Value']],
+      body: [
+        ['Power', `${inputs.power} kW`],
+        ['Input Speed', `${inputs.speedIn} RPM`],
+        ['Gear Ratio', inputs.ratio.toString()],
+        ['Module', `${inputs.module} mm`],
+        ['Number of Teeth', inputs.teeth.toString()],
+        ['Material', inputs.material],
+        ['Helix Angle', inputs.type === 'helical' ? `${inputs.helixAngle}°` : 'N/A'],
+      ],
+    });
+
+    doc.addPage();
+    doc.text('Calculated Geometric Data', 20, 20);
+    autoTable(doc, {
+        startY: 30,
+        head: [['Dimension', 'Formula', 'Value']],
+        body: results.geometry.steps.map(s => [s.label, s.formula, `${s.result} ${s.unit}`])
+    });
+
+    doc.text('Calculated Dynamic Data', 20, (doc as any).lastAutoTable.finalY + 20);
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 30,
+        head: [['Analysis', 'Formula', 'Value']],
+        body: results.dynamics.steps.map(s => [s.label, s.formula, `${s.result} ${s.unit}`])
+    });
+
+    doc.save(`Gear_Analysis_${inputs.type}.pdf`);
+  };
+
+  // Dynamic sweep parameters state controlled by the user
+  const [moduleMin, setModuleMin] = React.useState(1.5);
+  const [moduleMax, setModuleMax] = React.useState(10);
+  
+  const [teethMin, setTeethMin] = React.useState(12);
+  const [teethMax, setTeethMax] = React.useState(75);
+
+  const [speedMin, setSpeedMin] = React.useState(300);
+  const [speedMax, setSpeedMax] = React.useState(3600);
+  const [explainerTab, setExplainerTab] = React.useState<'graphs' | 'calculations' | 'failures'>('graphs');
+
+  // Dynamic calculations based on user-entered sweep boundaries
+  const stressData = React.useMemo(() => {
+    const data = [];
+    const minM = Math.max(0.5, moduleMin);
+    const maxM = Math.max(minM + 1, moduleMax);
+    const step = (maxM - minM) / 8;
+    for (let m = minM; m <= maxM + 0.01; m += step) {
+      const HA_rad = ((inputs.helixAngle || 0) * Math.PI) / 180;
+      const pitchDiameter = (m * inputs.teeth) / (inputs.type === 'helical' ? Math.cos(HA_rad) : 1);
+      const torque = (inputs.power * 1000 * 60) / (2 * Math.PI * inputs.speedIn); // N.m
+      const tangentialForce = (torque * 1000) / (pitchDiameter / 2); // N
+      const Y = 0.154 - (0.912 / inputs.teeth);
+      const lewisStress = tangentialForce / (inputs.faceWidth * m * Y);
+      data.push({
+        module: parseFloat(m.toFixed(2)),
+        stress: parseFloat(lewisStress.toFixed(1)),
+      });
+    }
+    return data;
+  }, [inputs, moduleMin, moduleMax]);
+
+  const forceData = React.useMemo(() => {
+    const data = [];
+    const minZ = Math.max(8, teethMin);
+    const maxZ = Math.max(minZ + 5, teethMax);
+    const step = Math.max(1, Math.round((maxZ - minZ) / 8));
+    for (let z = minZ; z <= maxZ; z += step) {
+      const HA_rad = ((inputs.helixAngle || 0) * Math.PI) / 180;
+      const pitchDiameter = (inputs.module * z) / (inputs.type === 'helical' ? Math.cos(HA_rad) : 1);
+      const torque = (inputs.power * 1000 * 60) / (2 * Math.PI * inputs.speedIn); // N.m
+      const tangentialForce = (torque * 1000) / (pitchDiameter / 2); // N
+      data.push({
+        teeth: z,
+        force: parseFloat(tangentialForce.toFixed(1)),
+      });
+    }
+    return data;
+  }, [inputs, teethMin, teethMax]);
+
+  const torqueData = React.useMemo(() => {
+    const data = [];
+    const minS = Math.max(50, speedMin);
+    const maxS = Math.max(minS + 100, speedMax);
+    const step = Math.max(10, Math.round((maxS - minS) / 8));
+    for (let rpm = minS; rpm <= maxS; rpm += step) {
+      const torque = (inputs.power * 1000 * 60) / (2 * Math.PI * rpm); // N.m
+      data.push({
+        speed: rpm,
+        torque: parseFloat(torque.toFixed(1)),
+      });
+    }
+    return data;
+  }, [inputs, speedMin, speedMax]);
+
+  return (
+    <div className="p-6 space-y-8 max-w-[1600px] mx-auto pb-20">
+      <header className="flex justify-between items-end border-b border-white/5 pb-6">
+        <div>
+           <div className="flex items-center gap-2 text-blue-400 mb-2">
+              <Activity className="w-4 h-4" />
+              <span className="text-xs font-mono uppercase tracking-widest">System Operational</span>
+           </div>
+           <h2 className="text-4xl font-bold tracking-tighter uppercase">{inputs.type} gear analyser</h2>
+        </div>
+        <button 
+          onClick={handleDownloadPDF}
+          className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-all"
+        >
+          <Download className="w-4 h-4" /> Generate Engineering Report
+        </button>
+      </header>
+
+      {/* Safety Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`p-6 rounded-2xl border flex items-center justify-between ${
+          results.dynamics.isSafe 
+            ? 'bg-green-500/10 border-green-500/20' 
+            : 'bg-red-500/10 border-red-500/20'
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <div className={`p-3 rounded-xl ${results.dynamics.isSafe ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+            {results.dynamics.isSafe ? <CheckCircle2 className="w-8 h-8" /> : <AlertTriangle className="w-8 h-8" />}
+          </div>
+          <div>
+            <h3 className="text-xl font-bold">{results.dynamics.isSafe ? 'OPTIMAL DESIGN' : 'SAFETY WARNING'}</h3>
+            <p className="text-neutral-400 text-sm">{results.dynamics.suggestion}</p>
+          </div>
+        </div>
+        <div className="text-right">
+           <span className="text-[10px] font-mono text-neutral-500 uppercase block mb-1">Factor of Safety</span>
+           <span className={`text-4xl font-bold ${results.dynamics.isSafe ? 'text-green-400' : 'text-red-400'}`}>
+             {results.dynamics.fos.toFixed(2)}
+           </span>
+        </div>
+      </motion.div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Visualizers */}
+        <div className="space-y-8">
+           <div className="aspect-[4/3] w-full">
+              <TwoDViewer inputs={inputs} results={results} />
+           </div>
+           <div className="aspect-[4/3] w-full">
+              <ThreeDViewer inputs={inputs} results={results} />
+           </div>
+        </div>
+
+        {/* Calculations & Results */}
+        <div className="space-y-8">
+            <CalculationCard 
+              title="Geometric Parameters" 
+              icon={<Box className="w-5 h-5 text-blue-400" />}
+              steps={results.geometry.steps} 
+            />
+            <CalculationCard 
+              title="Dynamic Performance" 
+              icon={<Calculator className="w-5 h-5 text-purple-400" />}
+              steps={results.dynamics.steps} 
+            />
+
+            <div className="glass-panel p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <TableIcon className="w-5 h-5 text-yellow-400" />
+                <h3 className="font-bold uppercase tracking-widest text-sm">Design Observations</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                 <ObsItem label="Torque" value={`${results.dynamics.torque.toFixed(2)} N.m`} />
+                 <ObsItem label="Tangential Force" value={`${results.dynamics.tangentialForce.toFixed(1)} N`} />
+                 <ObsItem label="Bending Stress" value={`${results.dynamics.lewisStress.toFixed(2)} MPa`} />
+                 <ObsItem label="Allowable Stress" value={`${results.dynamics.agmaStress.toFixed(2)} MPa`} />
+                 <ObsItem label="Wear Capacity" value={`${results.dynamics.wearStrength.toFixed(1)} N`} />
+                 <ObsItem label="Output Speed" value={`${results.kinematics.speedOut.toFixed(1)} RPM`} />
+              </div>
+            </div>
+        </div>
+      </div>
+
+      {/* Graphs Section */}
+      <div className="space-y-4">
+         <h3 className="text-xs font-mono uppercase text-neutral-500 tracking-[0.2em]">Live Performance Trend Sweeps</h3>
+         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {/* Lewis Stress vs Module Graph */}
+            <div className="glass-panel p-6 flex flex-col justify-between border-white/5 hover:border-blue-500/20 transition-colors">
+               <div>
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-xs font-mono uppercase text-neutral-400 font-bold">Lewis Stress vs Module</h3>
+                     <span className="text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-mono font-semibold uppercase tracking-widest">Sweep</span>
+                  </div>
+                  
+                  {/* Controls */}
+                  <div className="grid grid-cols-2 gap-3 mb-6 bg-neutral-900/50 p-3 rounded-lg border border-white/5">
+                    <div>
+                       <label className="text-[9px] font-mono uppercase text-neutral-500 block mb-1">Min Module (mm)</label>
+                       <input 
+                         type="number" 
+                         step="0.5"
+                         min="0.5"
+                         value={moduleMin}
+                         onChange={(e) => setModuleMin(parseFloat(e.target.value) || 0.5)}
+                         className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500/50"
+                       />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-mono uppercase text-neutral-500 block mb-1">Max Module (mm)</label>
+                       <input 
+                         type="number" 
+                         step="0.5"
+                         min={moduleMin + 0.5}
+                         value={moduleMax}
+                         onChange={(e) => setModuleMax(parseFloat(e.target.value) || 12)}
+                         className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500/50"
+                       />
+                    </div>
+                  </div>
+               </div>
+
+               <div className="h-60 mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <AreaChart data={stressData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <defs>
+                           <linearGradient id="colorStress" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                           </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                        <XAxis dataKey="module" stroke="#666" fontSize={9} />
+                        <YAxis stroke="#666" fontSize={9} />
+                        <Tooltip 
+                           contentStyle={{ backgroundColor: '#171717', border: '1px solid #333', borderRadius: '8px' }}
+                           itemStyle={{ color: '#3b82f6' }}
+                        />
+                        <Area type="monotone" dataKey="stress" stroke="#3b82f6" strokeWidth={1.5} fillOpacity={1} fill="url(#colorStress)" name="Stress (MPa)" />
+                     </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
+
+            {/* Tangential Force vs Teeth Count Graph */}
+            <div className="glass-panel p-6 flex flex-col justify-between border-white/5 hover:border-emerald-500/20 transition-colors">
+               <div>
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-xs font-mono uppercase text-neutral-400 font-bold">Force vs Tooth Count</h3>
+                     <span className="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-mono font-semibold uppercase tracking-widest">Sweep</span>
+                  </div>
+                  
+                  {/* Controls */}
+                  <div className="grid grid-cols-2 gap-3 mb-6 bg-neutral-900/50 p-3 rounded-lg border border-white/5">
+                    <div>
+                       <label className="text-[9px] font-mono uppercase text-neutral-500 block mb-1">Min Teeth (Pinion)</label>
+                       <input 
+                         type="number" 
+                         step="1"
+                         min="8"
+                         value={teethMin}
+                         onChange={(e) => setTeethMin(parseInt(e.target.value) || 8)}
+                         className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                       />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-mono uppercase text-neutral-500 block mb-1">Max Teeth (Pinion)</label>
+                       <input 
+                         type="number" 
+                         step="1"
+                         min={teethMin + 2}
+                         value={teethMax}
+                         onChange={(e) => setTeethMax(parseInt(e.target.value) || 120)}
+                         className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                       />
+                    </div>
+                  </div>
+               </div>
+
+               <div className="h-60 mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <AreaChart data={forceData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <defs>
+                           <linearGradient id="colorForce" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                           </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                        <XAxis dataKey="teeth" stroke="#666" fontSize={9} />
+                        <YAxis stroke="#666" fontSize={9} />
+                        <Tooltip 
+                           contentStyle={{ backgroundColor: '#171717', border: '1px solid #333', borderRadius: '8px' }}
+                           itemStyle={{ color: '#10b981' }}
+                        />
+                        <Area type="monotone" dataKey="force" stroke="#10b981" strokeWidth={1.5} fillOpacity={1} fill="url(#colorForce)" name="Force (N)" />
+                     </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
+
+            {/* Torque vs Operation Speed Graph */}
+            <div className="glass-panel p-6 flex flex-col justify-between border-white/5 hover:border-purple-500/20 transition-colors">
+               <div>
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-xs font-mono uppercase text-neutral-400 font-bold">Torque vs Shaft Speed</h3>
+                     <span className="text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded font-mono font-semibold uppercase tracking-widest">Sweep</span>
+                  </div>
+                  
+                  {/* Controls */}
+                  <div className="grid grid-cols-2 gap-3 mb-6 bg-neutral-900/50 p-3 rounded-lg border border-white/5">
+                    <div>
+                       <label className="text-[9px] font-mono uppercase text-neutral-500 block mb-1">Min Speed (RPM)</label>
+                       <input 
+                         type="number" 
+                         step="50"
+                         min="50"
+                         value={speedMin}
+                         onChange={(e) => setSpeedMin(parseInt(e.target.value) || 50)}
+                         className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-500/50"
+                       />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-mono uppercase text-neutral-500 block mb-1">Max Speed (RPM)</label>
+                       <input 
+                         type="number" 
+                         step="50"
+                         min={speedMin + 100}
+                         value={speedMax}
+                         onChange={(e) => setSpeedMax(parseInt(e.target.value) || 5000)}
+                         className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-500/50"
+                       />
+                    </div>
+                  </div>
+               </div>
+
+               <div className="h-60 mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <AreaChart data={torqueData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <defs>
+                           <linearGradient id="colorTorque" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                           </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                        <XAxis dataKey="speed" stroke="#666" fontSize={9} />
+                        <YAxis stroke="#666" fontSize={9} />
+                        <Tooltip 
+                           contentStyle={{ backgroundColor: '#171717', border: '1px solid #333', borderRadius: '8px' }}
+                           itemStyle={{ color: '#8b5cf6' }}
+                        />
+                        <Area type="monotone" dataKey="torque" stroke="#8b5cf6" strokeWidth={1.5} fillOpacity={1} fill="url(#colorTorque)" name="Torque (N.m)" />
+                     </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
+         </div>
+      </div>
+      {/* Theory, Explanations & References */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
+        <section className="glass-panel p-8 lg:col-span-2 border-white/5 bg-neutral-900/40">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <BookOpen className="w-6 h-6 text-blue-500 animate-pulse" />
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight uppercase text-white">Engineering Explainer Hub</h3>
+                  <p className="text-[10px] uppercase font-mono text-neutral-500 tracking-wider">Scientific Diagnostics & Physical Laws</p>
+                </div>
+              </div>
+              
+              {/* Dynamic explanations navigation tabs */}
+              <div className="flex bg-neutral-950 p-1 rounded-xl border border-white/5 gap-1 self-start md:self-auto">
+                 <button 
+                   onClick={() => setExplainerTab('graphs')}
+                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${explainerTab === 'graphs' ? 'bg-blue-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'}`}
+                 >
+                   <TrendingUp className="w-3 h-3" /> Trend Graphs
+                 </button>
+                 <button 
+                   onClick={() => setExplainerTab('calculations')}
+                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${explainerTab === 'calculations' ? 'bg-blue-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'}`}
+                 >
+                   <Layers className="w-3 h-3" /> Calculations Walk
+                 </button>
+                 <button 
+                   onClick={() => setExplainerTab('failures')}
+                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${explainerTab === 'failures' ? 'bg-blue-600 text-white shadow-md' : 'text-neutral-400 hover:text-white'}`}
+                 >
+                   <ShieldAlert className="w-3 h-3" /> Failure & Fatigue
+                 </button>
+              </div>
+            </div>
+
+            {/* Dynamic Content */}
+            <div className="space-y-6">
+              {explainerTab === 'graphs' && (
+                <div className="space-y-6">
+                  <div className="bg-blue-950/20 border border-blue-900/30 p-4 rounded-xl">
+                    <h4 className="text-xs font-bold text-blue-400 uppercase font-mono tracking-wider mb-2 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" /> dynamic sweep sensitivity insight
+                    </h4>
+                    <p className="text-xs text-neutral-300 leading-relaxed font-light">
+                      A professional mechanical designer never evaluates static numbers in a vacuum. Tuning the min/max sweep inputs above visualizes the sensitivity derivatives of your gear set. Watch how changing module boundaries, shaft speeds, or pinion teeth immediately charts real-time physical curve trends below.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5">
+                      <h5 className="font-bold text-xs text-blue-400 uppercase tracking-wide font-mono mb-2">1. Stress vs Module Laws</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light mb-3">
+                        Bending stress is modeled as a cantilever beam, where tooth thickness relates directly to the Normal Module (<code className="text-white font-mono">m</code>).
+                      </p>
+                      <div className="bg-black/30 p-2 rounded text-[11px] font-mono text-neutral-300 mb-3 text-center border border-white/5">
+                        σ = Ft / (b * m * Y)
+                      </div>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        Because <code className="text-blue-400 font-mono">m</code> is in the denominator, scaling it up spreads the tangential force across a larger profile depth, dropping bending stress <span className="text-emerald-400 font-bold">exponentially</span>.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5">
+                      <h5 className="font-bold text-xs text-emerald-400 uppercase tracking-wide font-mono mb-2">2. Force vs Teeth Count</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light mb-3">
+                        With fixed input power and speed, torque remains fully static. Tangential force (<code className="text-white font-mono">Ft</code>) represents the action of this torque at the pitch radius.
+                      </p>
+                      <div className="bg-black/30 p-2 rounded text-[11px] font-mono text-neutral-300 mb-3 text-center border border-white/5">
+                        Ft = 2000 * T / (m * Z)
+                      </div>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        As the teeth number (<code className="text-emerald-400 font-mono">Z</code>) increases, the pitch diameter expands, enlarging the moment arm of transmission and dropping the tangential shearing force required to carry specified horsepower.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5">
+                      <h5 className="font-bold text-xs text-purple-400 uppercase tracking-wide font-mono mb-2">3. Torque vs Shaft Speed</h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light mb-3">
+                        Gears transmit horsepower, which is a multiplication of rotational velocity (<code className="text-white font-mono">ω</code>) and torque (<code className="text-white font-mono">T</code>).
+                      </p>
+                      <div className="bg-black/30 p-2 rounded text-[11px] font-mono text-neutral-300 mb-3 text-center border border-white/5">
+                        T = (P * 60,000) / (2π * N)
+                      </div>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        Torque shares a clean <span className="text-purple-400 font-bold">hyperbolic inverse affinity</span> to Speed (RPM). Standard high-velocity gearboxes require much lower operational torques, allowing for lighter, compact gear face structures.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {explainerTab === 'calculations' && (
+                <div className="space-y-4">
+                  <div className="bg-neutral-950 p-5 rounded-xl border border-white/5">
+                    <h4 className="text-sm font-bold text-blue-400 mb-3 uppercase font-mono tracking-wider flex items-center gap-2">
+                      <Calculator className="w-4 h-4" /> Calculations Science Steps
+                    </h4>
+                    <p className="text-xs text-neutral-400 leading-relaxed font-light mb-4">
+                      The analyzer carries out the absolute mathematical equations taught in physical engineering classrooms:
+                    </p>
+
+                    <div className="space-y-4">
+                      <div className="flex gap-3">
+                        <span className="w-6 h-6 bg-blue-500/10 text-blue-400 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0">1</span>
+                        <div>
+                          <strong className="text-neutral-200 block text-xs">Velocity Reduction & Kinematics Check</strong>
+                          <p className="text-neutral-400 text-xs mt-0.5 font-light">Evaluates perfect gear mesh speed reduction. The gear ratio divides input RPM to find secondary velocity: <code className="text-blue-400 font-mono">N2 = N1 / i</code>, and multiplies torque proportionally.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="w-6 h-6 bg-blue-500/10 text-blue-400 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0">2</span>
+                        <div>
+                          <strong className="text-neutral-200 block text-xs">Geometric Form Parameterization</strong>
+                          <p className="text-neutral-400 text-xs mt-0.5 font-light">Computes the pitch diameter <code className="text-blue-400 font-mono">d = m * Z</code> as the primary datum line. Addendum boundary (<code className="text-neutral-300 font-mono">1m</code>) and Dedendum base (<code className="text-neutral-300 font-mono">1.25m</code>) determine outer gear diameters and root cut profiles.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="w-6 h-6 bg-blue-500/10 text-blue-400 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0">3</span>
+                        <div>
+                          <strong className="text-neutral-200 block text-xs">3D Dynamic Component Resolution</strong>
+                          <p className="text-neutral-400 text-xs mt-0.5 font-light">Decomposes transmitted power into force vectors: tangential force <code className="text-blue-400 font-mono">Ft = 2000 * Torque / d</code>, radial pushing force <code className="text-blue-400 font-mono">Fr = Ft * tan(α)</code>, and axial helix force <code className="text-blue-400 font-mono">Fa = Ft * tan(β)</code> (which represents the sliding helix lock on helical shafts).</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {explainerTab === 'failures' && (
+                <div className="space-y-4">
+                  <div className="bg-red-950/10 border border-red-900/20 p-4 rounded-xl">
+                    <h4 className="text-sm font-bold text-red-500 uppercase font-mono tracking-wider mb-1 flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-red-500" /> Major Mechanical Failure Modes
+                    </h4>
+                    <p className="text-xs text-neutral-300 leading-relaxed font-light">
+                      Professional powertrains must guard against two distinct material yield modes. Failure to secure a safety factor ≥ 1.5 leads to severe dynamic breakdowns.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5 space-y-2">
+                      <h5 className="font-bold text-xs text-orange-400 uppercase tracking-wide font-mono flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                        1. Pinion Bending Tension Fracture
+                      </h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        <strong>Root stress behavior:</strong> When teeth mesh, the entire load applies to the gear tip, acting like a cantilever beam. This creates maximum tensile stress concentration at the root fillet.
+                      </p>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        <strong>Fatigue Cracking:</strong> Continuous load cycling propagates root-crack fissures, ultimately causing complete shear breakage of individual teeth.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-neutral-900/60 rounded-xl border border-white/5 space-y-2">
+                      <h5 className="font-bold text-xs text-amber-500 uppercase tracking-wide font-mono flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        2. Surface Contact Fatigue (Pitting)
+                      </h5>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        <strong>Hertzian compression:</strong> Extreme contact pressure between curved loading faces sets up intense shear forces directly under the steel surface.
+                      </p>
+                      <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                        <strong>Surface Cratering:</strong> Fatigue produces microscopic sub-surface cracks that pop completely off, leaving surface crater pits around the active pitch line.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+        </section>
+
+        <section className="glass-panel p-8 border-white/5">
+          <div className="flex items-center gap-3 mb-8">
+            <ExternalLink className="w-6 h-6 text-purple-500" />
+            <h3 className="text-xl font-bold uppercase tracking-tight">External Tools</h3>
+          </div>
+          <div className="space-y-4">
+             <a 
+              href="https://www.omnicalculator.com/physics/gear-ratio" 
+              target="_blank" 
+              rel="noreferrer"
+              className="group block p-4 bg-white/5 border border-white/5 rounded-xl hover:border-purple-500/50 transition-all text-neutral-100"
+             >
+                <div className="flex justify-between items-center mb-1">
+                   <span className="text-sm font-bold group-hover:text-purple-400">Omni Calculator</span>
+                   <ExternalLink className="w-3 h-3 text-neutral-500" />
+                </div>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-mono">Gear Ratio Physics</p>
+             </a>
+
+             <a 
+              href="https://evolventdesign.com/pages/blank-calc" 
+              target="_blank" 
+              rel="noreferrer"
+              className="group block p-4 bg-white/5 border border-white/5 rounded-xl hover:border-blue-500/50 transition-all text-neutral-100"
+             >
+                <div className="flex justify-between items-center mb-1">
+                   <span className="text-sm font-bold group-hover:text-blue-400">Evolvent Design</span>
+                   <ExternalLink className="w-3 h-3 text-neutral-500" />
+                </div>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-mono">Gear Design Templates</p>
+             </a>
+          </div>
+        </section>
+
+        <section className="glass-panel p-8 bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 border-white/5 flex flex-col justify-between">
+           <div>
+             <div className="flex items-center gap-3 mb-6">
+                <CircleDot className="w-6 h-6 text-blue-500 animate-pulse" />
+                <h3 className="text-xl font-bold uppercase tracking-tight text-white">Navigation & Return</h3>
+             </div>
+             <p className="text-neutral-400 text-xs leading-relaxed mb-6 font-light">
+                Finished referencing external design tools? Use these controls to change gear types, reset configurations, or restart the session.
+             </p>
+           </div>
+           
+           <div className="space-y-3">
+              <button 
+                onClick={onBackToSelection}
+                className="w-full py-3 px-4 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest border border-blue-500/20 transition-all cursor-pointer"
+              >
+                ← Return to Selection
+              </button>
+              <button 
+                onClick={onBackToLanding}
+                className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest border border-white/5 transition-all cursor-pointer"
+              >
+                Go Back to Landing
+              </button>
+           </div>
+         </section>
+      </div>
+    </div>
+  );
+}
+
+function CalculationCard({ title, icon, steps }: { title: string, icon: React.ReactNode, steps: any[] }) {
+  return (
+    <div className="glass-panel p-6">
+      <div className="flex items-center gap-3 mb-6">
+        {icon}
+        <h3 className="font-bold uppercase tracking-widest text-sm">{title}</h3>
+      </div>
+      <div className="space-y-4">
+        {steps.map((step, idx) => (
+          <div key={idx} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-xs font-bold text-blue-400">{step.label}</span>
+              <span className="font-mono text-xs text-neutral-500">Step {idx + 1}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div>
+                  <p className="text-[10px] text-neutral-500 uppercase mb-1">Formula</p>
+                  <code className="text-sm font-mono text-white">{step.formula}</code>
+               </div>
+               <div className="text-right">
+                  <p className="text-[10px] text-neutral-500 uppercase mb-1">Result</p>
+                  <span className="text-lg font-bold text-white">{step.result} <span className="text-xs font-normal text-neutral-500">{step.unit}</span></span>
+               </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-white/5">
+                <p className="text-[10px] text-neutral-600 font-mono italic">Substitution: {step.substitution}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ObsItem({ label, value }: { label: string, value: string }) {
+  return (
+    <div>
+      <span className="text-[10px] text-neutral-500 uppercase block mb-1">{label}</span>
+      <span className="font-bold text-neutral-200">{value}</span>
+    </div>
+  )
+}
+
+function TheoryItem({ title, desc }: { title: string, desc: string }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="font-bold text-blue-400">{title}</h4>
+      <p className="text-sm text-neutral-400 leading-relaxed font-light">{desc}</p>
+    </div>
+  )
+}
